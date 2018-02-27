@@ -28,7 +28,7 @@ func IsExist(filename string) bool {
 func DownloadFiles(fileUrls []string, dstDir string, sleepMilliSec time.Duration) (int, error) {
 	downloadNum := 0
 	for _, fileUrl := range fileUrls {
-		downloaded, err := download(fileUrl, dstDir)
+		downloaded, err := Download(fileUrl, dstDir)
 		if err != nil {
 			return 0, err
 		}
@@ -41,7 +41,7 @@ func DownloadFiles(fileUrls []string, dstDir string, sleepMilliSec time.Duration
 	return downloadNum, nil
 }
 
-func download(fileUrl string, dstDir string) (bool, error) {
+func Download(fileUrl string, dstDir string) (bool, error) {
 	fileName, err := GetFileNameFromUrl(fileUrl)
 	if err != nil {
 		return false, err

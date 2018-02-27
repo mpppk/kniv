@@ -10,6 +10,8 @@ import (
 
 	"os"
 
+	"sync"
+
 	"github.com/MariaTerzieva/gotumblr"
 	"github.com/garyburd/go-oauth/oauth"
 	"github.com/mpppk/kniv/etc"
@@ -36,9 +38,9 @@ type Opt struct {
 
 type Client struct {
 	*gotumblr.TumblrRestClient
+	opt *Opt
 }
 
-// TODO これのvideo番を作るところから
 func (c *Client) GetPhotoUrls(blogName string, offset int) []string {
 	apiOpt := map[string]string{"offset": fmt.Sprint(offset)}
 	photoRes := c.Posts(blogName, "photo", apiOpt)
@@ -63,22 +65,40 @@ func (c *Client) GetBlogNames(max int) []string {
 	return blogNames
 }
 
+func fetchURL(wg *sync.WaitGroup, q chan string, dstDir string, sleepMilliSec time.Duration) {
+	defer wg.Done()
+	queueSize := 0
+	for {
+		fileUrl, ok := <-q // closeされると ok が false になる
+		if !ok {
+			fmt.Println("url fetching is terminated")
+			return
+		}
+
+		if len(q) != queueSize {
+			queueSize = len(q)
+			log.Printf("current URL queue size: %d\n", queueSize)
+		}
+
+		_, err := img.Download(fileUrl, dstDir)
+		if err != nil {
+			log.Println(err)
+		}
+		time.Sleep(sleepMilliSec * time.Millisecond)
+	}
+}
+
 func Crawl(opt *Opt) {
 	photoDstDir := "photos"
 	if v, ok := opt.DstDirMap["photo"]; ok {
 		photoDstDir = v
 	}
-	videoDstDir := "videos"
-	if v, ok := opt.DstDirMap["video"]; ok {
-		videoDstDir = v
-	}
+	//videoDstDir := "videos"
+	//if v, ok := opt.DstDirMap["video"]; ok {
+	//	videoDstDir = v
+	//}
 
 	maxBlogNum := opt.MaxBlogNum
-	postNumPerBlog := opt.PostNumPerBlog
-	apiInterval := opt.APIIntervalMilliSec
-	offset := opt.Offset
-	downloadInterval := opt.DownloadIntervalMilliSec
-
 	rawClient := gotumblr.NewTumblrRestClient(
 		opt.ConsumerKey,
 		opt.ConsumerSecret,
@@ -88,75 +108,111 @@ func Crawl(opt *Opt) {
 		"http://api.tumblr.com",
 	)
 
-	client := Client{TumblrRestClient: rawClient}
+	client := Client{TumblrRestClient: rawClient, opt: opt}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	q := make(chan string, 100000)
+	go fetchURL(&wg, q, photoDstDir, 3000)
 
 	blogNames := client.GetBlogNames(maxBlogNum)
 	requestCount := 0
 	for i, blogName := range blogNames {
 		fmt.Printf("---- fetch from %s %d/%d----\n", blogName, i, len(blogNames))
-		fetchNum := offset
-		for fetchNum <= postNumPerBlog+offset {
-			photoUrls := client.GetPhotoUrls(blogName, fetchNum)
-			requestCount++
-			log.Printf("%d photo URLs are found on %s %d-%d / %d request: %d",
-				len(photoUrls), blogName, fetchNum, fetchNum+20, postNumPerBlog+offset, requestCount)
-			if len(photoUrls) == 0 {
-				time.Sleep(apiInterval * time.Millisecond)
-				break
-			}
+		client.fetchURLs(blogName, photoDstDir, requestCount, q)
+		//client.fetchURLs(blogName, photoDstDir, requestCount, q)
+		//for fetchNum <= postNumPerBlog+offset {
+		//	photoUrls := client.GetPhotoUrls(blogName, fetchNum)
+		//	requestCount++
+		//	log.Printf("%d photo URLs are found on %s %d-%d / %d request: %d",
+		//		len(photoUrls), blogName, fetchNum, fetchNum+20, postNumPerBlog+offset, requestCount)
+		//	if len(photoUrls) == 0 {
+		//		time.Sleep(apiInterval * time.Millisecond)
+		//		break
+		//	}
+		//
+		//	photoUrls, err := filterExistFileUrls(photoUrls, photoDstDir)
+		//	if err != nil {
+		//		log.Fatal(err)
+		//	}
+		//
+		//	if len(photoUrls) == 0 {
+		//		time.Sleep(apiInterval * time.Millisecond)
+		//		break
+		//	}
+		//
+		//	for _, photoUrl := range photoUrls {
+		//		q <- photoUrl
+		//	}
+		//
+		//	fetchNum += 20
+		//	time.Sleep(apiInterval * time.Millisecond)
+		//}
 
-			photoUrls, err := filterExistFileUrls(photoUrls, photoDstDir)
-			if err != nil {
-				log.Fatal(err)
-			}
+		//fetchNum = offset
+		//for fetchNum <= postNumPerBlog+offset {
+		//	apiOpt := map[string]string{"offset": fmt.Sprint(fetchNum)}
+		//	videoRes := rawClient.Posts(blogName, "video", apiOpt)
+		//	requestCount++
+		//
+		//	videoUrls, err := GetVideoUrls(ConvertJsonToVideoPosts(videoRes.Posts))
+		//	if err != nil {
+		//		log.Print(err)
+		//	}
+		//
+		//	log.Printf("%d video URLs are found on %s %d-%d / %d request: %d",
+		//		len(videoUrls), blogName, fetchNum, fetchNum+20, postNumPerBlog+offset, requestCount)
+		//
+		//	if len(videoUrls) == 0 {
+		//		time.Sleep(apiInterval * time.Millisecond)
+		//		break
+		//	}
+		//
+		//	downloadNum, err := img.DownloadFiles(videoUrls, path.Join(videoDstDir, blogName), downloadInterval)
+		//	if err != nil {
+		//		log.Print(err)
+		//	}
+		//
+		//	if downloadNum == 0 {
+		//		time.Sleep(apiInterval * time.Millisecond)
+		//		break
+		//	}
+		//
+		//	fetchNum += 20
+		//	time.Sleep(apiInterval * time.Millisecond)
+		//}
+	}
+}
+func (c *Client) fetchURLs(blogName, dstDir string, requestCount int, q chan string) {
+	fetchNum := c.opt.Offset
+	for fetchNum <= c.opt.PostNumPerBlog+c.opt.Offset {
+		requestCount++
+		fileUrls := c.GetPhotoUrls(blogName, c.opt.Offset)
 
-			downloadNum, err := img.DownloadFiles(photoUrls, path.Join(photoDstDir, blogName), downloadInterval)
-			if err != nil {
-				log.Print(err)
-				break
-			}
+		log.Printf("%d photo URLs are found on %s %d-%d / %d request: %d",
+			len(fileUrls), blogName, fetchNum, fetchNum+20, c.opt.PostNumPerBlog+c.opt.Offset, requestCount)
 
-			if downloadNum == 0 {
-				time.Sleep(apiInterval * time.Millisecond)
-				break
-			}
-
-			fetchNum += 20
-			time.Sleep(apiInterval * time.Millisecond)
+		if len(fileUrls) == 0 {
+			time.Sleep(c.opt.APIIntervalMilliSec * time.Millisecond)
+			break
 		}
 
-		fetchNum = offset
-		for fetchNum <= postNumPerBlog+offset {
-			apiOpt := map[string]string{"offset": fmt.Sprint(fetchNum)}
-			videoRes := rawClient.Posts(blogName, "video", apiOpt)
-			requestCount++
-
-			videoUrls, err := GetVideoUrls(ConvertJsonToVideoPosts(videoRes.Posts))
-			if err != nil {
-				log.Print(err)
-			}
-
-			log.Printf("%d video URLs are found on %s %d-%d / %d request: %d",
-				len(videoUrls), blogName, fetchNum, fetchNum+20, postNumPerBlog+offset, requestCount)
-
-			if len(videoUrls) == 0 {
-				time.Sleep(apiInterval * time.Millisecond)
-				break
-			}
-
-			downloadNum, err := img.DownloadFiles(videoUrls, path.Join(videoDstDir, blogName), downloadInterval)
-			if err != nil {
-				log.Print(err)
-			}
-
-			if downloadNum == 0 {
-				time.Sleep(apiInterval * time.Millisecond)
-				break
-			}
-
-			fetchNum += 20
-			time.Sleep(apiInterval * time.Millisecond)
+		fileUrls, err := filterExistFileUrls(fileUrls, dstDir)
+		if err != nil {
+			log.Fatal(err)
 		}
+
+		if len(fileUrls) == 0 {
+			time.Sleep(c.opt.APIIntervalMilliSec * time.Millisecond)
+			break
+		}
+
+		for _, photoUrl := range fileUrls {
+			q <- photoUrl
+		}
+
+		fetchNum += 20
+		time.Sleep(c.opt.APIIntervalMilliSec * time.Millisecond)
 	}
 }
 
@@ -171,7 +227,7 @@ func filterExistFileUrls(fileUrls []string, dir string) (filteredFileUrls []stri
 			filteredFileUrls = append(filteredFileUrls, fileUrl)
 		}
 	}
-	return
+	return filteredFileUrls, err
 }
 
 func isExistFileUrl(fileUrl string, dir string) (bool, error) {
@@ -187,9 +243,9 @@ func isExistFileUrl(fileUrl string, dir string) (bool, error) {
 	}
 
 	if img.IsExist(path.Join(dir, fileName)) {
-		return false, nil
+		return true, nil
 	}
-	return true, nil
+	return false, nil
 }
 
 func ConvertJsonToVideoPosts(jsonPosts []json.RawMessage) []VideoPost {
