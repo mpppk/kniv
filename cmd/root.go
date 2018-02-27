@@ -52,6 +52,7 @@ var rootCmd = &cobra.Command{
 				"photo": "imgs",
 				"video": "videos",
 			},
+			DownloadQueueSize: 100000,
 		})
 	},
 }
