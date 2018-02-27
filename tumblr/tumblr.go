@@ -38,7 +38,27 @@ type Opt struct {
 
 type Client struct {
 	*gotumblr.TumblrRestClient
-	opt *Opt
+	opt           *Opt
+	photoFetchNum int
+	videoFetchNum int
+}
+
+func NewClient(opt *Opt) *Client {
+	rawClient := gotumblr.NewTumblrRestClient(
+		opt.ConsumerKey,
+		opt.ConsumerSecret,
+		opt.OauthToken,
+		opt.OauthSecret,
+		"callback_url",
+		"http://api.tumblr.com",
+	)
+
+	return &Client{
+		TumblrRestClient: rawClient,
+		opt:              opt,
+		photoFetchNum:    opt.Offset,
+		videoFetchNum:    opt.Offset,
+	}
 }
 
 func (c *Client) GetPhotoUrls(blogName string, offset int) []string {
@@ -99,16 +119,17 @@ func Crawl(opt *Opt) {
 	//}
 
 	maxBlogNum := opt.MaxBlogNum
-	rawClient := gotumblr.NewTumblrRestClient(
-		opt.ConsumerKey,
-		opt.ConsumerSecret,
-		opt.OauthToken,
-		opt.OauthSecret,
-		"callback_url",
-		"http://api.tumblr.com",
-	)
-
-	client := Client{TumblrRestClient: rawClient, opt: opt}
+	//rawClient := gotumblr.NewTumblrRestClient(
+	//	opt.ConsumerKey,
+	//	opt.ConsumerSecret,
+	//	opt.OauthToken,
+	//	opt.OauthSecret,
+	//	"callback_url",
+	//	"http://api.tumblr.com",
+	//)
+	//
+	//client := Client{TumblrRestClient: rawClient, opt: opt}
+	client := NewClient(opt)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
