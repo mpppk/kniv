@@ -5,16 +5,14 @@ import (
 	"fmt"
 	"log"
 	"net/url"
-	"os"
 	"path"
-	"strconv"
 	"time"
+
+	"os"
 
 	"github.com/MariaTerzieva/gotumblr"
 	"github.com/garyburd/go-oauth/oauth"
-	"github.com/joho/godotenv"
 	"github.com/mpppk/kniv/etc"
-	"github.com/mpppk/tumblrimg/tumblr"
 	"github.com/skratchdot/open-golang/open"
 )
 
@@ -23,44 +21,35 @@ type VideoPost struct {
 	VideoUrl string `json:"video_url"`
 }
 
-func Crawl() {
-	photoDstDir := "imgs"
-	videoDstDir := "videos"
-	postNumPerBlog := 500
+type Opt struct {
+	ConsumerKey              string
+	ConsumerSecret           string
+	OauthToken               string
+	OauthSecret              string
+	Offset                   int
+	MaxBlogNum               int
+	PostNumPerBlog           int
+	APIIntervalMilliSec      time.Duration
+	DownloadIntervalMilliSec time.Duration
+	DstDirMap                map[string]string
+}
 
-	fetchGlobalOffset := 0
-	if len(os.Args) > 1 {
-		num, err := strconv.Atoi(os.Args[1])
-		if err != nil {
-			log.Fatal(err)
-		}
-		fetchGlobalOffset = num
-	}
+type Client struct {
+	*gotumblr.TumblrRestClient
+}
 
-	maxBlogNum := 200
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+// TODO これのvideo番を作るところから
+func (c *Client) GetPhotoUrls(blogName string, offset int) []string {
+	apiOpt := map[string]string{"offset": fmt.Sprint(offset)}
+	photoRes := c.Posts(blogName, "photo", apiOpt)
+	return GetImageUrlsFromAPIResponse(ConvertJsonToPhotoPosts(photoRes.Posts))
+}
 
-	consumerKey := os.Getenv("CONSUMER_KEY")
-	consumerSecret := os.Getenv("CONSUMER_SECRET")
-	oauthToken := os.Getenv("OAUTH_TOKEN")
-	oauthSecret := os.Getenv("OAUTH_SECRET")
-
-	client := gotumblr.NewTumblrRestClient(
-		consumerKey,
-		consumerSecret,
-		oauthToken,
-		oauthSecret,
-		"callback_url",
-		"http://api.tumblr.com",
-	)
-
-	blogOffset := 0
+func (c *Client) GetBlogNames(max int) []string {
 	var blogNames []string
-	for blogOffset <= maxBlogNum {
-		blogs := client.Following(map[string]string{"offset": fmt.Sprint(blogOffset)}).Blogs
+	offset := 0
+	for offset <= max {
+		blogs := c.Following(map[string]string{"offset": fmt.Sprint(offset)}).Blogs
 
 		if len(blogs) == 0 {
 			fmt.Println("blog num zero")
@@ -69,73 +58,138 @@ func Crawl() {
 		for _, blog := range blogs {
 			blogNames = append(blogNames, blog.Name)
 		}
-		blogOffset += 20
+		offset += 20
+	}
+	return blogNames
+}
+
+func Crawl(opt *Opt) {
+	photoDstDir := "photos"
+	if v, ok := opt.DstDirMap["photo"]; ok {
+		photoDstDir = v
+	}
+	videoDstDir := "videos"
+	if v, ok := opt.DstDirMap["video"]; ok {
+		videoDstDir = v
 	}
 
+	maxBlogNum := opt.MaxBlogNum
+	postNumPerBlog := opt.PostNumPerBlog
+	apiInterval := opt.APIIntervalMilliSec
+	offset := opt.Offset
+	downloadInterval := opt.DownloadIntervalMilliSec
+
+	rawClient := gotumblr.NewTumblrRestClient(
+		opt.ConsumerKey,
+		opt.ConsumerSecret,
+		opt.OauthToken,
+		opt.OauthSecret,
+		"callback_url",
+		"http://api.tumblr.com",
+	)
+
+	client := Client{TumblrRestClient: rawClient}
+
+	blogNames := client.GetBlogNames(maxBlogNum)
 	requestCount := 0
 	for i, blogName := range blogNames {
 		fmt.Printf("---- fetch from %s %d/%d----\n", blogName, i, len(blogNames))
-		fetchNum := fetchGlobalOffset
-		for fetchNum <= postNumPerBlog+fetchGlobalOffset {
-			opt := map[string]string{"offset": fmt.Sprint(fetchNum)}
-			photoRes := client.Posts(blogName, "photo", opt)
+		fetchNum := offset
+		for fetchNum <= postNumPerBlog+offset {
+			photoUrls := client.GetPhotoUrls(blogName, fetchNum)
 			requestCount++
-			photoUrls := tumblr.GetImageUrls(tumblr.ConvertJsonToPhotoPosts(photoRes.Posts))
 			log.Printf("%d photo URLs are found on %s %d-%d / %d request: %d",
-				len(photoUrls), blogName, fetchNum, fetchNum+20, postNumPerBlog+fetchGlobalOffset, requestCount)
+				len(photoUrls), blogName, fetchNum, fetchNum+20, postNumPerBlog+offset, requestCount)
 			if len(photoUrls) == 0 {
-				time.Sleep(4000 * time.Millisecond)
+				time.Sleep(apiInterval * time.Millisecond)
 				break
 			}
 
-			downloadNum, err := img.DownloadFiles(photoUrls, path.Join(photoDstDir, blogName), 2000)
+			photoUrls, err := filterExistFileUrls(photoUrls, photoDstDir)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			downloadNum, err := img.DownloadFiles(photoUrls, path.Join(photoDstDir, blogName), downloadInterval)
 			if err != nil {
 				log.Print(err)
 				break
 			}
 
 			if downloadNum == 0 {
-				time.Sleep(4000 * time.Millisecond)
+				time.Sleep(apiInterval * time.Millisecond)
 				break
 			}
 
 			fetchNum += 20
-			time.Sleep(4000 * time.Millisecond)
+			time.Sleep(apiInterval * time.Millisecond)
 		}
 
-		fetchNum = fetchGlobalOffset
-		for fetchNum <= postNumPerBlog+fetchGlobalOffset {
-			opt := map[string]string{"offset": fmt.Sprint(fetchNum)}
-			videoRes := client.Posts(blogName, "video", opt)
+		fetchNum = offset
+		for fetchNum <= postNumPerBlog+offset {
+			apiOpt := map[string]string{"offset": fmt.Sprint(fetchNum)}
+			videoRes := rawClient.Posts(blogName, "video", apiOpt)
 			requestCount++
 
-			videoUrls, err := tumblr.GetVideoUrls(tumblr.ConvertJsonToVideoPosts(videoRes.Posts))
+			videoUrls, err := GetVideoUrls(ConvertJsonToVideoPosts(videoRes.Posts))
 			if err != nil {
 				log.Print(err)
 			}
 
 			log.Printf("%d video URLs are found on %s %d-%d / %d request: %d",
-				len(videoUrls), blogName, fetchNum, fetchNum+20, postNumPerBlog+fetchGlobalOffset, requestCount)
+				len(videoUrls), blogName, fetchNum, fetchNum+20, postNumPerBlog+offset, requestCount)
 
 			if len(videoUrls) == 0 {
-				time.Sleep(4000 * time.Millisecond)
+				time.Sleep(apiInterval * time.Millisecond)
 				break
 			}
 
-			downloadNum, err := img.DownloadFiles(videoUrls, path.Join(videoDstDir, blogName), 2000)
+			downloadNum, err := img.DownloadFiles(videoUrls, path.Join(videoDstDir, blogName), downloadInterval)
 			if err != nil {
 				log.Print(err)
 			}
 
 			if downloadNum == 0 {
-				time.Sleep(4000 * time.Millisecond)
+				time.Sleep(apiInterval * time.Millisecond)
 				break
 			}
 
 			fetchNum += 20
-			time.Sleep(4000 * time.Millisecond)
+			time.Sleep(apiInterval * time.Millisecond)
 		}
 	}
+}
+
+func filterExistFileUrls(fileUrls []string, dir string) (filteredFileUrls []string, err error) {
+	for _, fileUrl := range fileUrls {
+		exist, err := isExistFileUrl(fileUrl, dir)
+		if err != nil {
+			return nil, err
+		}
+
+		if !exist {
+			filteredFileUrls = append(filteredFileUrls, fileUrl)
+		}
+	}
+	return
+}
+
+func isExistFileUrl(fileUrl string, dir string) (bool, error) {
+	fileName, err := img.GetFileNameFromUrl(fileUrl)
+	if err != nil {
+		return false, err
+	}
+
+	if !img.IsExist(dir) {
+		if err := os.MkdirAll(dir, 0777); err != nil {
+			return false, err
+		}
+	}
+
+	if img.IsExist(path.Join(dir, fileName)) {
+		return false, nil
+	}
+	return true, nil
 }
 
 func ConvertJsonToVideoPosts(jsonPosts []json.RawMessage) []VideoPost {
@@ -177,7 +231,7 @@ func GetVideoUrls(videoPosts []VideoPost) ([]string, error) {
 	return videoUrls, nil
 }
 
-func GetImageUrls(photoPosts []gotumblr.PhotoPost) []string {
+func GetImageUrlsFromAPIResponse(photoPosts []gotumblr.PhotoPost) []string {
 	var photoUrls []string
 	for _, post := range photoPosts {
 		if post.PostType != "photo" {

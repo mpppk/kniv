@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func getFileNameFromUrl(fileUrl string) (string, error) {
+func GetFileNameFromUrl(fileUrl string) (string, error) {
 	parsedFileUrl, err := url.Parse(fileUrl)
 	if err != nil {
 		return "", err
@@ -20,7 +20,7 @@ func getFileNameFromUrl(fileUrl string) (string, error) {
 	return splitedFilePath[len(splitedFilePath)-1], nil
 }
 
-func isExist(filename string) bool {
+func IsExist(filename string) bool {
 	_, err := os.Stat(filename)
 	return err == nil
 }
@@ -42,18 +42,18 @@ func DownloadFiles(fileUrls []string, dstDir string, sleepMilliSec time.Duration
 }
 
 func download(fileUrl string, dstDir string) (bool, error) {
-	fileName, err := getFileNameFromUrl(fileUrl)
+	fileName, err := GetFileNameFromUrl(fileUrl)
 	if err != nil {
 		return false, err
 	}
 
-	if !isExist(dstDir) {
+	if !IsExist(dstDir) {
 		if err := os.MkdirAll(dstDir, 0777); err != nil {
 			return false, err
 		}
 	}
 
-	if isExist(path.Join(dstDir, fileName)) {
+	if IsExist(path.Join(dstDir, fileName)) {
 		return false, nil
 	}
 
