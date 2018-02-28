@@ -7,8 +7,11 @@ import (
 
 	"log"
 
+	"sync"
+
 	"github.com/joho/godotenv"
 	homedir "github.com/mitchellh/go-homedir"
+	"github.com/mpppk/kniv/downloader"
 	"github.com/mpppk/kniv/tumblr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -16,13 +19,10 @@ import (
 
 var cfgFile string
 
-// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "kniv",
 	Short: "crawler",
 	Long:  ``,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
 		offset := 0
 		if len(os.Args) > 1 {
@@ -38,7 +38,7 @@ var rootCmd = &cobra.Command{
 			log.Fatal("Error loading .env file")
 		}
 
-		tumblr.Crawl(&tumblr.Opt{
+		client := tumblr.NewCrawler(&tumblr.Opt{
 			ConsumerKey:              os.Getenv("CONSUMER_KEY"),
 			ConsumerSecret:           os.Getenv("CONSUMER_SECRET"),
 			OauthToken:               os.Getenv("OAUTH_TOKEN"),
@@ -52,8 +52,15 @@ var rootCmd = &cobra.Command{
 				"photo": "imgs",
 				"video": "videos",
 			},
-			DownloadQueueSize: 100000,
 		})
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		q := make(chan string, 100000)
+		client.SetResourceChannel(q)
+		go downloader.FetchURL(&wg, q, "img", 3000)
+
+		client.SendResourceUrlsToChannel()
 	},
 }
 

@@ -9,11 +9,8 @@ import (
 
 	"os"
 
-	"sync"
-
 	"github.com/MariaTerzieva/gotumblr"
 	"github.com/garyburd/go-oauth/oauth"
-	"github.com/mpppk/kniv/downloader"
 	"github.com/mpppk/kniv/etc"
 	"github.com/skratchdot/open-golang/open"
 )
@@ -21,22 +18,6 @@ import (
 type VideoPost struct {
 	gotumblr.BasePost
 	VideoUrl string `json:"video_url"`
-}
-
-func Crawl(opt *Opt) {
-	maxBlogNum := opt.MaxBlogNum
-	client := NewClient(opt)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go downloader.FetchURL(&wg, client.URLChannel, "img", 3000)
-
-	blogNames := client.GetBlogNames(maxBlogNum)
-	for i, blogName := range blogNames {
-		fmt.Printf("---- fetch from %s %d/%d----\n", blogName, i, len(blogNames))
-		client.sendPhotoURLsToChannel(blogName)
-		client.sendVideoURLsToChannel(blogName)
-	}
 }
 
 func filterExistFileUrls(fileUrls []string, dir string) (filteredFileUrls []string, err error) {

@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/MariaTerzieva/gotumblr"
+	"github.com/mpppk/kniv/kniv"
 )
 
 type Opt struct {
@@ -23,17 +24,17 @@ type Opt struct {
 	DownloadQueueSize        int
 }
 
-type Client struct {
+type Crawler struct {
 	*gotumblr.TumblrRestClient
-	opt           *Opt
-	photoFetchNum int
-	videoFetchNum int
-	photoDstDir   string
-	videoDstDir   string
-	URLChannel    chan string
+	opt             *Opt
+	photoFetchNum   int
+	videoFetchNum   int
+	photoDstDir     string
+	videoDstDir     string
+	resourceChannel chan string
 }
 
-func NewClient(opt *Opt) *Client {
+func NewCrawler(opt *Opt) kniv.Crawler {
 	rawClient := gotumblr.NewTumblrRestClient(
 		opt.ConsumerKey,
 		opt.ConsumerSecret,
@@ -52,30 +53,43 @@ func NewClient(opt *Opt) *Client {
 		videoDstDir = v
 	}
 
-	return &Client{
+	return &Crawler{
 		TumblrRestClient: rawClient,
 		opt:              opt,
 		photoFetchNum:    opt.Offset,
 		videoFetchNum:    opt.Offset,
 		photoDstDir:      photoDstDir,
 		videoDstDir:      videoDstDir,
-		URLChannel:       make(chan string, opt.DownloadQueueSize),
 	}
 }
 
-func (c *Client) GetPhotoUrls(blogName string, apiOffset int) []string {
+func (c *Crawler) SetResourceChannel(q chan string) {
+	c.resourceChannel = q
+}
+
+func (c *Crawler) SendResourceUrlsToChannel() {
+	blogNames := c.getBlogNames(c.opt.MaxBlogNum)
+	for i, blogName := range blogNames {
+		fmt.Printf("---- fetch from %s %d/%d----\n", blogName, i, len(blogNames))
+		c.sendPhotoURLsToChannel(blogName)
+		c.sendVideoURLsToChannel(blogName)
+	}
+	close(c.resourceChannel)
+}
+
+func (c *Crawler) getPhotoUrls(blogName string, apiOffset int) []string {
 	apiOpt := map[string]string{"offset": fmt.Sprint(apiOffset)}
 	photoRes := c.Posts(blogName, "photo", apiOpt)
 	return getImageUrlsFromAPIResponse(convertJsonToPhotoPosts(photoRes.Posts))
 }
 
-func (c *Client) GetVideoUrls(blogName string, apiOffset int) []string {
+func (c *Crawler) getVideoUrls(blogName string, apiOffset int) []string {
 	apiOpt := map[string]string{"offset": fmt.Sprint(apiOffset)}
 	videoRes := c.Posts(blogName, "video", apiOpt)
 	return getVideoUrlsFromAPIResponse(convertJsonToVideoPosts(videoRes.Posts))
 }
 
-func (c *Client) GetBlogNames(max int) []string {
+func (c *Crawler) getBlogNames(max int) []string {
 	var blogNames []string
 	offset := 0
 	for offset <= max {
@@ -93,15 +107,15 @@ func (c *Client) GetBlogNames(max int) []string {
 	return blogNames
 }
 
-func (c *Client) sendVideoURLsToChannel(blogName string) {
-	c.sendFileURLsToChannel(c.GetVideoUrls, blogName, c.videoDstDir)
+func (c *Crawler) sendVideoURLsToChannel(blogName string) {
+	c.sendFileURLsToChannel(c.getVideoUrls, blogName, c.videoDstDir)
 }
 
-func (c *Client) sendPhotoURLsToChannel(blogName string) {
-	c.sendFileURLsToChannel(c.GetPhotoUrls, blogName, c.photoDstDir)
+func (c *Crawler) sendPhotoURLsToChannel(blogName string) {
+	c.sendFileURLsToChannel(c.getPhotoUrls, blogName, c.photoDstDir)
 }
 
-func (c *Client) sendFileURLsToChannel(getFileUrls func(string, int) []string, blogName, dstDir string) {
+func (c *Crawler) sendFileURLsToChannel(getFileUrls func(string, int) []string, blogName, dstDir string) {
 	fetchNum := c.opt.Offset
 	for fetchNum <= c.opt.PostNumPerBlog+c.opt.Offset {
 		fileUrls := getFileUrls(blogName, fetchNum)
@@ -115,7 +129,7 @@ func (c *Client) sendFileURLsToChannel(getFileUrls func(string, int) []string, b
 		}
 
 		for _, fileUrl := range fileUrls {
-			c.URLChannel <- fileUrl
+			c.resourceChannel <- fileUrl
 		}
 
 		time.Sleep(c.opt.APIIntervalMilliSec * time.Millisecond)
