@@ -7,20 +7,34 @@ import (
 	"time"
 
 	"github.com/mpppk/kniv/etc"
+	"github.com/mpppk/kniv/kniv"
 )
 
-func FetchURL(wg *sync.WaitGroup, q chan string, dstDir string, sleepMilliSec time.Duration) {
-	defer wg.Done()
+type Downloader struct {
+	Channel       chan string
+	wg            sync.WaitGroup
+	sleepMilliSec time.Duration
+}
+
+func New(queueSize int, sleepMilliSec time.Duration) *Downloader {
+	return &Downloader{
+		Channel:       make(chan string, queueSize),
+		sleepMilliSec: sleepMilliSec,
+	}
+}
+
+func (d *Downloader) FetchURL(dstDir string) {
+	defer d.wg.Done()
 	queueSize := 0
 	for {
-		fileUrl, ok := <-q // closeされると ok が false になる
+		fileUrl, ok := <-d.Channel // closeされると ok が false になる
 		if !ok {
 			fmt.Println("url fetching is terminated")
 			return
 		}
 
-		if len(q) != queueSize {
-			queueSize = len(q)
+		if len(d.Channel) != queueSize {
+			queueSize = len(d.Channel)
 			log.Printf("current URL queue size: %d\n", queueSize)
 		}
 
@@ -28,6 +42,12 @@ func FetchURL(wg *sync.WaitGroup, q chan string, dstDir string, sleepMilliSec ti
 		if err != nil {
 			log.Println(err)
 		}
-		time.Sleep(sleepMilliSec * time.Millisecond)
+		time.Sleep(d.sleepMilliSec * time.Millisecond)
 	}
+}
+
+func (d *Downloader) RegisterCrawler(crawler kniv.Crawler, dstDir string) {
+	d.wg.Add(1)
+	crawler.SetResourceChannel(d.Channel)
+	go d.FetchURL(dstDir)
 }

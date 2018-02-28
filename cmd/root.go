@@ -7,10 +7,8 @@ import (
 
 	"log"
 
-	"sync"
-
 	"github.com/joho/godotenv"
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/mitchellh/go-homedir"
 	"github.com/mpppk/kniv/downloader"
 	"github.com/mpppk/kniv/tumblr"
 	"github.com/spf13/cobra"
@@ -38,7 +36,7 @@ var rootCmd = &cobra.Command{
 			log.Fatal("Error loading .env file")
 		}
 
-		client := tumblr.NewCrawler(&tumblr.Opt{
+		tumblrCrawler := tumblr.NewCrawler(&tumblr.Opt{
 			ConsumerKey:              os.Getenv("CONSUMER_KEY"),
 			ConsumerSecret:           os.Getenv("CONSUMER_SECRET"),
 			OauthToken:               os.Getenv("OAUTH_TOKEN"),
@@ -54,13 +52,9 @@ var rootCmd = &cobra.Command{
 			},
 		})
 
-		var wg sync.WaitGroup
-		wg.Add(1)
-		q := make(chan string, 100000)
-		client.SetResourceChannel(q)
-		go downloader.FetchURL(&wg, q, "img", 3000)
-
-		client.SendResourceUrlsToChannel()
+		downloader := downloader.New(100000, 3000)
+		downloader.RegisterCrawler(tumblrCrawler, "sammple_img")
+		tumblrCrawler.SendResourceUrlsToChannel()
 	},
 }
 
