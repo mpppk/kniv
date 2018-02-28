@@ -47,7 +47,13 @@ func (d *Downloader) FetchURL(dstDir string) {
 }
 
 func (d *Downloader) RegisterCrawler(crawler kniv.Crawler, dstDir string) {
+	//	TODO: crawler.GetDownloadDestinationsを実装(downloader側で登録するのに使う)
+
 	d.wg.Add(1)
 	crawler.SetResourceChannel(d.Channel)
 	go d.FetchURL(dstDir)
+}
+
+func (d *Downloader) SetDownloadDestination(crawler kniv.Crawler, dstDir string) {
+
 }

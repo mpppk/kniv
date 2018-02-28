@@ -11,7 +11,9 @@ import (
 
 	"github.com/MariaTerzieva/gotumblr"
 	"github.com/garyburd/go-oauth/oauth"
+	"github.com/joho/godotenv"
 	"github.com/mpppk/kniv/etc"
+	"github.com/mpppk/kniv/kniv"
 	"github.com/skratchdot/open-golang/open"
 )
 
@@ -150,4 +152,28 @@ func authorize() {
 
 	fmt.Println("Token: ", tokenCard.Token)
 	fmt.Println("Secret: ", tokenCard.Secret)
+}
+
+func init() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	crawler := NewCrawler(&Opt{
+		ConsumerKey:              os.Getenv("CONSUMER_KEY"),
+		ConsumerSecret:           os.Getenv("CONSUMER_SECRET"),
+		OauthToken:               os.Getenv("OAUTH_TOKEN"),
+		OauthSecret:              os.Getenv("OAUTH_SECRET"),
+		Offset:                   0,
+		MaxBlogNum:               200,
+		PostNumPerBlog:           500,
+		APIIntervalMilliSec:      4000,
+		DownloadIntervalMilliSec: 3000,
+		DstDirMap: map[string]string{
+			"photo": "imgs",
+			"video": "videos",
+		},
+	})
+	kniv.RegisterCrawler(crawler)
 }

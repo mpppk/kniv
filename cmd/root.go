@@ -2,17 +2,13 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"strconv"
-
-	"log"
-
-	"github.com/joho/godotenv"
 	"github.com/mitchellh/go-homedir"
 	"github.com/mpppk/kniv/downloader"
-	"github.com/mpppk/kniv/tumblr"
+	"github.com/mpppk/kniv/kniv"
+	_ "github.com/mpppk/kniv/tumblr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"os"
 )
 
 var cfgFile string
@@ -22,39 +18,13 @@ var rootCmd = &cobra.Command{
 	Short: "crawler",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		offset := 0
-		if len(os.Args) > 1 {
-			num, err := strconv.Atoi(os.Args[1])
-			if err != nil {
-				log.Fatal(err)
-			}
-			offset = num
+		dl := downloader.New(100000, 3000)
+
+		for _, crawler := range kniv.Crawlers {
+			// TODO: crawler.GetDownloadDestinationsからダウンロード先をdlに登録
+			dl.RegisterCrawler(crawler, "sammple_img")
+			crawler.SendResourceUrlsToChannel()
 		}
-
-		err := godotenv.Load()
-		if err != nil {
-			log.Fatal("Error loading .env file")
-		}
-
-		tumblrCrawler := tumblr.NewCrawler(&tumblr.Opt{
-			ConsumerKey:              os.Getenv("CONSUMER_KEY"),
-			ConsumerSecret:           os.Getenv("CONSUMER_SECRET"),
-			OauthToken:               os.Getenv("OAUTH_TOKEN"),
-			OauthSecret:              os.Getenv("OAUTH_SECRET"),
-			Offset:                   offset,
-			MaxBlogNum:               200,
-			PostNumPerBlog:           500,
-			APIIntervalMilliSec:      4000,
-			DownloadIntervalMilliSec: 3000,
-			DstDirMap: map[string]string{
-				"photo": "imgs",
-				"video": "videos",
-			},
-		})
-
-		downloader := downloader.New(100000, 3000)
-		downloader.RegisterCrawler(tumblrCrawler, "sammple_img")
-		tumblrCrawler.SendResourceUrlsToChannel()
 	},
 }
 
