@@ -11,23 +11,23 @@ import (
 )
 
 type Downloader struct {
-	Channel       chan string
+	Channel       chan kniv.Resource
 	wg            sync.WaitGroup
 	sleepMilliSec time.Duration
 }
 
 func New(queueSize int, sleepMilliSec time.Duration) *Downloader {
 	return &Downloader{
-		Channel:       make(chan string, queueSize),
+		Channel:       make(chan kniv.Resource, queueSize),
 		sleepMilliSec: sleepMilliSec,
 	}
 }
 
-func (d *Downloader) FetchURL(dstDir string) {
+func (d *Downloader) FetchURL() {
 	defer d.wg.Done()
 	queueSize := 0
 	for {
-		fileUrl, ok := <-d.Channel // closeされると ok が false になる
+		resource, ok := <-d.Channel // closeされると ok が false になる
 		if !ok {
 			fmt.Println("url fetching is terminated")
 			return
@@ -38,7 +38,7 @@ func (d *Downloader) FetchURL(dstDir string) {
 			log.Printf("current URL queue size: %d\n", queueSize)
 		}
 
-		_, err := img.Download(fileUrl, dstDir)
+		_, err := img.Download(resource.Url, resource.DstPath)
 		if err != nil {
 			log.Println(err)
 		}
@@ -46,12 +46,10 @@ func (d *Downloader) FetchURL(dstDir string) {
 	}
 }
 
-func (d *Downloader) RegisterCrawler(crawler kniv.Crawler, dstDir string) {
-	//	TODO: crawler.GetDownloadDestinationsを実装(downloader側で登録するのに使う)
-
+func (d *Downloader) RegisterCrawler(crawler kniv.Crawler) {
 	d.wg.Add(1)
 	crawler.SetResourceChannel(d.Channel)
-	go d.FetchURL(dstDir)
+	go d.FetchURL()
 }
 
 func (d *Downloader) SetDownloadDestination(crawler kniv.Crawler, dstDir string) {

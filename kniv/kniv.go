@@ -1,7 +1,13 @@
 package kniv
 
+type Resource struct {
+	ResourceType string
+	Url          string
+	DstPath      string
+}
+
 type Crawler interface {
-	SetResourceChannel(chan string)
+	SetResourceChannel(chan Resource)
 	SendResourceUrlsToChannel()
 }
 

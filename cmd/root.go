@@ -21,8 +21,7 @@ var rootCmd = &cobra.Command{
 		dl := downloader.New(100000, 3000)
 
 		for _, crawler := range kniv.Crawlers {
-			// TODO: crawler.GetDownloadDestinationsからダウンロード先をdlに登録
-			dl.RegisterCrawler(crawler, "sammple_img")
+			dl.RegisterCrawler(crawler)
 			crawler.SendResourceUrlsToChannel()
 		}
 	},
