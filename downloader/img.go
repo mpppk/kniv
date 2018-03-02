@@ -1,4 +1,4 @@
-package img
+package downloader
 
 import (
 	"io"

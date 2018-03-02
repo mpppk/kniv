@@ -12,8 +12,7 @@ import (
 	"errors"
 	"github.com/MariaTerzieva/gotumblr"
 	"github.com/garyburd/go-oauth/oauth"
-	"github.com/joho/godotenv"
-	"github.com/mpppk/kniv/etc"
+	"github.com/mpppk/kniv/downloader"
 	"github.com/mpppk/kniv/kniv"
 	"github.com/skratchdot/open-golang/open"
 	"time"
@@ -39,18 +38,18 @@ func filterExistFileUrls(fileUrls []string, dir string) (filteredFileUrls []stri
 }
 
 func isExistFileUrl(fileUrl string, dir string) (bool, error) {
-	fileName, err := img.GetFileNameFromUrl(fileUrl)
+	fileName, err := downloader.GetFileNameFromUrl(fileUrl)
 	if err != nil {
 		return false, err
 	}
 
-	if !img.IsExist(dir) {
+	if !downloader.IsExist(dir) {
 		if err := os.MkdirAll(dir, 0777); err != nil {
 			return false, err
 		}
 	}
 
-	if img.IsExist(path.Join(dir, fileName)) {
+	if downloader.IsExist(path.Join(dir, fileName)) {
 		return true, nil
 	}
 	return false, nil
@@ -230,9 +229,5 @@ func toOpt(optMap map[string]interface{}) (*Opt, error) {
 }
 
 func init() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
 	kniv.RegisterCrawlerFactory(&CrawlerFactory{})
 }

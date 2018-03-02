@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mpppk/kniv/etc"
 	"github.com/mpppk/kniv/kniv"
 )
 
@@ -23,7 +22,7 @@ func New(queueSize int, sleepMilliSec time.Duration) *Downloader {
 	}
 }
 
-func (d *Downloader) FetchURL() {
+func (d *Downloader) Start() {
 	defer d.wg.Done()
 	queueSize := 0
 	for {
@@ -38,7 +37,7 @@ func (d *Downloader) FetchURL() {
 			log.Printf("current URL queue size: %d\n", queueSize)
 		}
 
-		_, err := img.Download(resource.Url, resource.DstPath)
+		_, err := Download(resource.Url, resource.DstPath)
 		if err != nil {
 			log.Println(err)
 		}
@@ -49,7 +48,7 @@ func (d *Downloader) FetchURL() {
 func (d *Downloader) RegisterCrawler(crawler kniv.Crawler) {
 	d.wg.Add(1)
 	crawler.SetResourceChannel(d.Channel)
-	go d.FetchURL()
+	go d.Start()
 }
 
 func (d *Downloader) SetDownloadDestination(crawler kniv.CrawlerFactory, dstDir string) {
