@@ -9,12 +9,14 @@ import (
 
 	"os"
 
+	"errors"
 	"github.com/MariaTerzieva/gotumblr"
 	"github.com/garyburd/go-oauth/oauth"
 	"github.com/joho/godotenv"
 	"github.com/mpppk/kniv/etc"
 	"github.com/mpppk/kniv/kniv"
 	"github.com/skratchdot/open-golang/open"
+	"time"
 )
 
 type VideoPost struct {
@@ -154,26 +156,83 @@ func authorize() {
 	fmt.Println("Secret: ", tokenCard.Secret)
 }
 
+type CrawlerFactory struct{}
+
+func (c *CrawlerFactory) Create(crawlersSetting map[string]interface{}) (kniv.Crawler, error) {
+
+	optMap, ok := crawlersSetting["tumblr"].(map[string]interface{})
+	if !ok {
+		return nil, errors.New("invalid setting in tumblr key")
+	}
+
+	opt, err := toOpt(optMap)
+	return NewCrawler(opt), err
+}
+
+func toOpt(optMap map[string]interface{}) (*Opt, error) {
+	// TODO: TEST
+	opt := &Opt{
+		Offset:                   0,
+		MaxBlogNum:               1000,
+		PostNumPerBlog:           20,
+		APIIntervalMilliSec:      time.Duration(10000),
+		DownloadIntervalMilliSec: time.Duration(10000),
+		DstDirMap: map[string]string{
+			"photo": "tumblr/photo",
+			"video": "tumblr/video",
+		},
+	}
+
+	if consumerKey, ok := optMap["consumer_key"].(string); ok {
+		opt.ConsumerKey = consumerKey
+	} else {
+		return nil, errors.New("consumer_key not found in setting file")
+	}
+
+	if consumerSecret, ok := optMap["consumer_secret"].(string); ok {
+		opt.ConsumerSecret = consumerSecret
+	} else {
+		return nil, errors.New("consumer_secret not found in setting file")
+	}
+
+	if oauthToken, ok := optMap["oauth_token"].(string); ok {
+		opt.OauthToken = oauthToken
+	} else {
+		return nil, errors.New("oauth_token not found in setting file")
+	}
+
+	if oauthSecret, ok := optMap["oauth_secret"].(string); ok {
+		opt.OauthSecret = oauthSecret
+	} else {
+		return nil, errors.New("oauth_secret not found in setting file")
+	}
+
+	if offset, ok := optMap["offset"].(int); ok {
+		opt.Offset = offset
+	}
+
+	if maxBlogNum, ok := optMap["max_blog_num"].(int); ok {
+		opt.MaxBlogNum = maxBlogNum
+	}
+
+	if postNumPerBlog, ok := optMap["post_num_per_blog"].(int); ok {
+		opt.PostNumPerBlog = postNumPerBlog
+	}
+
+	if apiInterval, ok := optMap["api_interval_millisec"].(int); ok {
+		opt.APIIntervalMilliSec = time.Duration(apiInterval) * time.Millisecond
+	}
+
+	if downloadInterval, ok := optMap["download_interval_millisec"].(int); ok {
+		opt.DownloadIntervalMilliSec = time.Duration(downloadInterval) * time.Millisecond
+	}
+	return opt, nil
+}
+
 func init() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
-
-	crawler := NewCrawler(&Opt{
-		ConsumerKey:              os.Getenv("CONSUMER_KEY"),
-		ConsumerSecret:           os.Getenv("CONSUMER_SECRET"),
-		OauthToken:               os.Getenv("OAUTH_TOKEN"),
-		OauthSecret:              os.Getenv("OAUTH_SECRET"),
-		Offset:                   0,
-		MaxBlogNum:               200,
-		PostNumPerBlog:           500,
-		APIIntervalMilliSec:      4000,
-		DownloadIntervalMilliSec: 3000,
-		DstDirMap: map[string]string{
-			"photo": "imgs",
-			"video": "videos",
-		},
-	})
-	kniv.RegisterCrawler(crawler)
+	kniv.RegisterCrawlerFactory(&CrawlerFactory{})
 }

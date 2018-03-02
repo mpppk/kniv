@@ -52,6 +52,6 @@ func (d *Downloader) RegisterCrawler(crawler kniv.Crawler) {
 	go d.FetchURL()
 }
 
-func (d *Downloader) SetDownloadDestination(crawler kniv.Crawler, dstDir string) {
+func (d *Downloader) SetDownloadDestination(crawler kniv.CrawlerFactory, dstDir string) {
 
 }

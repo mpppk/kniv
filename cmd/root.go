@@ -8,7 +8,9 @@ import (
 	_ "github.com/mpppk/kniv/tumblr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"log"
 	"os"
+	"path"
 )
 
 var cfgFile string
@@ -20,7 +22,13 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		dl := downloader.New(100000, 3000)
 
-		for _, crawler := range kniv.Crawlers {
+		crawlersSetting := viper.GetStringMap("crawlers")
+
+		for _, crawlerGenerator := range kniv.CrawlerFactories {
+			crawler, err := crawlerGenerator.Create(crawlersSetting)
+			if err != nil {
+				log.Fatal(err)
+			}
 			dl.RegisterCrawler(crawler)
 			crawler.SendResourceUrlsToChannel()
 		}
@@ -63,7 +71,7 @@ func initConfig() {
 		}
 
 		// Search config in home directory with name ".kniv" (without extension).
-		viper.AddConfigPath(home)
+		viper.AddConfigPath(path.Join(home, ".config", "kniv"))
 		viper.SetConfigName(".kniv")
 	}
 

@@ -136,7 +136,7 @@ func (c *Crawler) sendFileURLsToChannel(getFileUrls func(string, int) []string, 
 			}
 		}
 
-		time.Sleep(c.opt.APIIntervalMilliSec * time.Millisecond)
+		time.Sleep(c.opt.APIIntervalMilliSec)
 
 		if len(fileUrls) == 0 {
 			return

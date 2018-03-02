@@ -11,8 +11,12 @@ type Crawler interface {
 	SendResourceUrlsToChannel()
 }
 
-var Crawlers []Crawler
+type CrawlerFactory interface {
+	Create(crawlersSetting map[string]interface{}) (Crawler, error)
+}
 
-func RegisterCrawler(crawler Crawler) {
-	Crawlers = append(Crawlers, crawler)
+var CrawlerFactories []CrawlerFactory
+
+func RegisterCrawlerFactory(crawlerGenerator CrawlerFactory) {
+	CrawlerFactories = append(CrawlerFactories, crawlerGenerator)
 }
