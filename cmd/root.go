@@ -20,7 +20,7 @@ var rootCmd = &cobra.Command{
 	Short: "crawler",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		dl := downloader.New(100000, 3000)
+		dl := downloader.New(100000, 3000, viper.GetString("downloader/destination_dir"))
 
 		crawlersSetting := viper.GetStringMap("crawlers")
 

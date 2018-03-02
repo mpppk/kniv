@@ -8,6 +8,7 @@ import (
 
 	"github.com/MariaTerzieva/gotumblr"
 	"github.com/mpppk/kniv/kniv"
+	"path"
 )
 
 type Opt struct {
@@ -118,12 +119,13 @@ func (c *Crawler) sendPhotoURLsToChannel(blogName string) {
 func (c *Crawler) sendFileURLsToChannel(getFileUrls func(string, int) []string, blogName, dstDir string) {
 	fetchNum := c.opt.Offset
 	for fetchNum <= c.opt.PostNumPerBlog+c.opt.Offset {
+		blogDstDir := path.Join(dstDir, blogName)
 		fileUrls := getFileUrls(blogName, fetchNum)
 
 		log.Printf("%d URLs are found on %s %d-%d / %d",
 			len(fileUrls), blogName, fetchNum, fetchNum+20, c.opt.PostNumPerBlog+c.opt.Offset)
 
-		fileUrls, err := filterExistFileUrls(fileUrls, dstDir)
+		fileUrls, err := filterExistFileUrls(fileUrls, blogDstDir)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -132,7 +134,7 @@ func (c *Crawler) sendFileURLsToChannel(getFileUrls func(string, int) []string, 
 			c.resourceChannel <- kniv.Resource{
 				Url:          fileUrl,
 				ResourceType: "tumblr",
-				DstPath:      dstDir,
+				DstPath:      blogDstDir,
 			}
 		}
 

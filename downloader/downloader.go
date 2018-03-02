@@ -7,18 +7,21 @@ import (
 	"time"
 
 	"github.com/mpppk/kniv/kniv"
+	"path"
 )
 
 type Downloader struct {
-	Channel       chan kniv.Resource
-	wg            sync.WaitGroup
-	sleepMilliSec time.Duration
+	Channel         chan kniv.Resource
+	wg              sync.WaitGroup
+	sleepMilliSec   time.Duration
+	rootDestination string
 }
 
-func New(queueSize int, sleepMilliSec time.Duration) *Downloader {
+func New(queueSize int, sleepMilliSec time.Duration, rootDestination string) *Downloader {
 	return &Downloader{
-		Channel:       make(chan kniv.Resource, queueSize),
-		sleepMilliSec: sleepMilliSec,
+		Channel:         make(chan kniv.Resource, queueSize),
+		sleepMilliSec:   sleepMilliSec,
+		rootDestination: rootDestination,
 	}
 }
 
@@ -37,7 +40,7 @@ func (d *Downloader) Start() {
 			log.Printf("current URL queue size: %d\n", queueSize)
 		}
 
-		_, err := Download(resource.Url, resource.DstPath)
+		_, err := Download(resource.Url, path.Join(d.rootDestination, resource.DstPath))
 		if err != nil {
 			log.Println(err)
 		}
