@@ -20,12 +20,14 @@ var rootCmd = &cobra.Command{
 	Short: "crawler",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		dl := downloader.New(100000, 3000, viper.GetString("downloader/destination_dir"))
+		rootDownloadDir := viper.GetString("global.download_dir")
+		dl := downloader.New(100000, 3000)
 
 		crawlersSetting := viper.GetStringMap("crawlers")
 
-		for _, crawlerGenerator := range kniv.CrawlerFactories {
-			crawler, err := crawlerGenerator.Create(crawlersSetting)
+		for _, crawlerFactory := range kniv.CrawlerFactories {
+			crawler, err := crawlerFactory.Create(crawlersSetting)
+			crawler.SetRootDownloadDir(rootDownloadDir)
 			if err != nil {
 				log.Fatal(err)
 			}

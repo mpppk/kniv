@@ -33,6 +33,7 @@ type Crawler struct {
 	photoDstDir     string
 	videoDstDir     string
 	resourceChannel chan kniv.Resource
+	rootDownloadDir string
 }
 
 func NewCrawler(opt *Opt) kniv.Crawler {
@@ -66,6 +67,10 @@ func NewCrawler(opt *Opt) kniv.Crawler {
 
 func (c *Crawler) SetResourceChannel(q chan kniv.Resource) {
 	c.resourceChannel = q
+}
+
+func (c *Crawler) SetRootDownloadDir(dir string) {
+	c.rootDownloadDir = dir
 }
 
 func (c *Crawler) SendResourceUrlsToChannel() {
@@ -119,7 +124,7 @@ func (c *Crawler) sendPhotoURLsToChannel(blogName string) {
 func (c *Crawler) sendFileURLsToChannel(getFileUrls func(string, int) []string, blogName, dstDir string) {
 	fetchNum := c.opt.Offset
 	for fetchNum <= c.opt.PostNumPerBlog+c.opt.Offset {
-		blogDstDir := path.Join(dstDir, blogName)
+		blogDstDir := path.Join(c.rootDownloadDir, dstDir, blogName)
 		fileUrls := getFileUrls(blogName, fetchNum)
 
 		log.Printf("%d URLs are found on %s %d-%d / %d",

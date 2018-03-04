@@ -8,6 +8,7 @@ type Resource struct {
 
 type Crawler interface {
 	SetResourceChannel(chan Resource)
+	SetRootDownloadDir(dir string)
 	SendResourceUrlsToChannel()
 }
 
