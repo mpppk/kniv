@@ -9,6 +9,7 @@ import (
 	"github.com/MariaTerzieva/gotumblr"
 	"github.com/mpppk/kniv/kniv"
 	"path"
+	"sync"
 )
 
 type Opt struct {
@@ -73,14 +74,14 @@ func (c *Crawler) SetRootDownloadDir(dir string) {
 	c.rootDownloadDir = dir
 }
 
-func (c *Crawler) SendResourceUrlsToChannel() {
+func (c *Crawler) StartResourceSending(wg *sync.WaitGroup) {
+	defer wg.Done()
 	blogNames := c.getBlogNames(c.opt.MaxBlogNum)
 	for i, blogName := range blogNames {
 		fmt.Printf("---- fetch from %s %d/%d----\n", blogName, i, len(blogNames))
 		c.sendPhotoURLsToChannel(blogName)
 		c.sendVideoURLsToChannel(blogName)
 	}
-	close(c.resourceChannel)
 }
 
 func (c *Crawler) getPhotoUrls(blogName string, apiOffset int) []string {

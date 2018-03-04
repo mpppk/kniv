@@ -3,28 +3,29 @@ package downloader
 import (
 	"fmt"
 	"log"
-	"sync"
 	"time"
 
 	"github.com/mpppk/kniv/kniv"
+	"sync"
 )
 
 type Downloader struct {
 	Channel         chan kniv.Resource
-	wg              sync.WaitGroup
 	sleepMilliSec   time.Duration
 	rootDestination string
+	crawlers        []kniv.Crawler
+	wg              *sync.WaitGroup
 }
 
 func New(queueSize int, sleepMilliSec time.Duration) *Downloader {
 	return &Downloader{
 		Channel:       make(chan kniv.Resource, queueSize),
 		sleepMilliSec: sleepMilliSec,
+		wg:            &sync.WaitGroup{},
 	}
 }
 
-func (d *Downloader) Start() {
-	defer d.wg.Done()
+func (d *Downloader) WatchResource() {
 	queueSize := 0
 	for {
 		resource, ok := <-d.Channel // closeされると ok が false になる
@@ -47,11 +48,16 @@ func (d *Downloader) Start() {
 }
 
 func (d *Downloader) RegisterCrawler(crawler kniv.Crawler) {
-	d.wg.Add(1)
 	crawler.SetResourceChannel(d.Channel)
-	go d.Start()
+	d.crawlers = append(d.crawlers, crawler)
 }
 
-func (d *Downloader) SetDownloadDestination(crawler kniv.CrawlerFactory, dstDir string) {
-
+func (d *Downloader) StartCrawl() {
+	go d.WatchResource()
+	for _, crawler := range d.crawlers {
+		d.wg.Add(1)
+		go crawler.StartResourceSending(d.wg)
+	}
+	d.wg.Wait()
+	close(d.Channel)
 }

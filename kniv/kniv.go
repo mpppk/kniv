@@ -1,5 +1,7 @@
 package kniv
 
+import "sync"
+
 type Resource struct {
 	ResourceType string
 	Url          string
@@ -9,7 +11,7 @@ type Resource struct {
 type Crawler interface {
 	SetResourceChannel(chan Resource)
 	SetRootDownloadDir(dir string)
-	SendResourceUrlsToChannel()
+	StartResourceSending(wg *sync.WaitGroup)
 }
 
 type CrawlerFactory interface {

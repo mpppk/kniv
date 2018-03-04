@@ -32,7 +32,7 @@ var rootCmd = &cobra.Command{
 				log.Fatal(err)
 			}
 			dl.RegisterCrawler(crawler)
-			crawler.SendResourceUrlsToChannel()
+			dl.StartCrawl()
 		}
 	},
 }
