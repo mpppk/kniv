@@ -6,6 +6,7 @@ import (
 	"github.com/mpppk/kniv/downloader"
 	"github.com/mpppk/kniv/kniv"
 	_ "github.com/mpppk/kniv/tumblr"
+	_ "github.com/mpppk/kniv/twitter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"log"
@@ -32,8 +33,8 @@ var rootCmd = &cobra.Command{
 				log.Fatal(err)
 			}
 			dl.RegisterCrawler(crawler)
-			dl.StartCrawl()
 		}
+		dl.StartCrawl()
 	},
 }
 
