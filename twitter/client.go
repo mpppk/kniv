@@ -81,27 +81,6 @@ func (c *Crawler) Fetch(offset, limit int) ([]anaconda.Tweet, error) {
 	}
 
 	return c.client.GetUserTimeline(values)
-
-	//tweets, err := c.client.GetUserTimeline(values)
-	//if err != nil {
-	//	return nil, false, err
-	//}
-
-	//layout := "Mon Jan 2 15:04:05 -0700 2006"
-	//var retTweets []anaconda.Tweet
-	//
-	//for _, tweet := range tweets {
-	//	date, err := time.Parse(layout, tweet.CreatedAt)
-	//	if err != nil {
-	//		return nil, false, err
-	//	}
-	//	timeDiff := date.Sub(c.config.SinceDate).Nanoseconds()
-	//	if timeDiff < 0 {
-	//		return retTweets, false, nil
-	//	}
-	//	retTweets = append(retTweets, tweet)
-	//}
-	//return retTweets, true, err
 }
 
 func toConfig(configMap map[string]interface{}) (*Config, error) {

@@ -2,10 +2,13 @@ package kniv
 
 import "sync"
 
+type ResourceType string
+
 type Resource struct {
-	ResourceType string
-	Url          string
-	DstPath      string
+	ResourceType     ResourceType
+	NextResourceType ResourceType
+	Url              string
+	DstPath          string
 }
 
 type Crawler interface {

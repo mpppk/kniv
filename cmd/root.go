@@ -3,15 +3,14 @@ package cmd
 import (
 	"fmt"
 	"github.com/mitchellh/go-homedir"
-	"github.com/mpppk/kniv/downloader"
 	"github.com/mpppk/kniv/kniv"
 	_ "github.com/mpppk/kniv/tumblr"
 	_ "github.com/mpppk/kniv/twitter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"log"
 	"os"
 	"path"
+	"time"
 )
 
 var cfgFile string
@@ -21,20 +20,32 @@ var rootCmd = &cobra.Command{
 	Short: "crawler",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		rootDownloadDir := viper.GetString("global.download_dir")
-		dl := downloader.New(100000, 3000)
+		//rootDownloadDir := viper.GetString("global.download_dir")
+		//dl := downloader.New(100000, 3000)
+		//
+		//crawlersSetting := viper.GetStringMap("crawlers")
+		//
+		//for _, crawlerFactory := range kniv.CrawlerFactories {
+		//	crawler, err := crawlerFactory.Create(crawlersSetting)
+		//	crawler.SetRootDownloadDir(rootDownloadDir)
+		//	if err != nil {
+		//		log.Fatal(err)
+		//	}
+		//	dl.RegisterCrawler(crawler)
+		//}
+		//dl.StartCrawl()
 
-		crawlersSetting := viper.GetStringMap("crawlers")
-
-		for _, crawlerFactory := range kniv.CrawlerFactories {
-			crawler, err := crawlerFactory.Create(crawlersSetting)
-			crawler.SetRootDownloadDir(rootDownloadDir)
-			if err != nil {
-				log.Fatal(err)
-			}
-			dl.RegisterCrawler(crawler)
-		}
-		dl.StartCrawl()
+		dispatcher := kniv.NewDispatcher(100000)
+		dispatcher.RegisterProcessor("twitter.image", kniv.NewImageDownloadProcessor(100000, "idp"))
+		go dispatcher.Start()
+		dispatcher.StartProcessors()
+		dispatcher.AddResource(kniv.Resource{
+			ResourceType:     "twitter.image",
+			NextResourceType: "end",
+			Url:              "http://pbs.twimg.com/media/DXCkNTeVwAAENcr.jpg",
+			DstPath:          "test.jpg",
+		})
+		time.Sleep(10 * time.Minute)
 	},
 }
 
