@@ -5,22 +5,60 @@ import (
 	"log"
 )
 
+type registeredProcessor struct {
+	resourceType ResourceType
+	processor    Processor
+}
+
+type registeredProcessors []*registeredProcessor
+
+func (rs registeredProcessors) add(resourceType ResourceType, processor Processor) {
+	rs = append(rs, &registeredProcessor{
+		resourceType: resourceType,
+		processor:    processor,
+	})
+}
+
+func (rs registeredProcessors) filter(resourceType ResourceType) registeredProcessors {
+	var ret registeredProcessors
+	for _, r := range rs {
+		if r.resourceType == resourceType {
+			ret = append(ret, r)
+		}
+	}
+	return ret
+}
+
+func (rs registeredProcessors) toProcessors() (processors []Processor) {
+	for _, r := range rs {
+		processors = append(processors, r.processor)
+	}
+	return processors
+}
+
+func (rs registeredProcessors) start() {
+	for _, p := range rs.toProcessors() {
+		go p.Start()
+	}
+}
+
 type Dispatcher struct {
-	processorMap map[ResourceType]Processor
-	queue        chan Resource
+	registeredProcessors registeredProcessors
+	queue                chan Resource
 }
 
 func NewDispatcher(queueSize int) *Dispatcher {
 	return &Dispatcher{
-		processorMap: map[ResourceType]Processor{},
-		queue:        make(chan Resource, queueSize),
+		queue: make(chan Resource, queueSize),
 	}
 }
 
 func (d *Dispatcher) RegisterProcessor(resourceType ResourceType, processor Processor) {
 	processor.SetOutChannel(d.queue)
-	d.processorMap[resourceType] = processor
-
+	d.registeredProcessors = append(d.registeredProcessors, &registeredProcessor{
+		resourceType: resourceType,
+		processor:    processor,
+	})
 }
 
 func (d *Dispatcher) AddResource(resource Resource) {
@@ -30,19 +68,20 @@ func (d *Dispatcher) AddResource(resource Resource) {
 func (d *Dispatcher) Start() {
 	for resource := range d.queue {
 		log.Println("new resource:", resource)
-		processor, ok := d.processorMap[resource.ResourceType]
-		if !ok {
+		filteredProcessors := d.registeredProcessors.filter(resource.ResourceType)
+		if len(filteredProcessors) == 0 {
 			log.Println(resource.ResourceType + " not found")
 			continue
 		}
-		fmt.Println("resource consumed by ", processor.GetName())
-		fmt.Println(&processor)
-		processor.Enqueue(resource)
+
+		for _, processor := range filteredProcessors.toProcessors() {
+			fmt.Println("resource consumed by ", processor.GetName())
+			fmt.Println(&processor)
+			processor.Enqueue(resource)
+		}
 	}
 }
 
 func (d *Dispatcher) StartProcessors() {
-	for _, p := range d.processorMap {
-		go p.Start()
-	}
+	d.registeredProcessors.start()
 }
