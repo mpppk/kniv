@@ -9,7 +9,7 @@ type BaseProcessor struct {
 	Name    string
 	inChan  chan Resource
 	outChan chan Resource
-	Process func(resource Resource) (Resource, error)
+	Process func(resource Resource) ([]Resource, error)
 }
 
 func (b *BaseProcessor) GetName() string {
@@ -27,13 +27,22 @@ func (b *BaseProcessor) SetOutChannel(outChan chan Resource) {
 func (b *BaseProcessor) Start() {
 	for resource := range b.inChan {
 		fmt.Println(b.GetName(), "start processing:", resource)
-		processedResource, err := b.Process(resource)
+		processedResources, err := b.Process(resource)
 		if err != nil {
 			// TODO: Add err chan
 			log.Println(err)
 			continue
 		}
-		b.outChan <- processedResource
+		for _, r := range processedResources {
+			b.outChan <- r
+		}
+	}
+}
+
+func NewBaseProcessor(queueSize int) *BaseProcessor {
+	return &BaseProcessor{
+		Name:   "base procesor",
+		inChan: make(chan Resource, queueSize),
 	}
 }
 

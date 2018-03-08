@@ -16,7 +16,7 @@ func NewImageDownloadProcessor(queueSize int, rootDestination string) *ImageDown
 	}
 }
 
-func DownloadFromResource(resource Resource) (Resource, error) {
+func DownloadFromResource(resource Resource) ([]Resource, error) {
 	_, err := Download(resource.Url, resource.DstPath)
-	return Resource{ResourceType: resource.NextResourceType}, err
+	return []Resource{{ResourceType: resource.NextResourceType}}, err
 }

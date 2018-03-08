@@ -5,9 +5,11 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/mpppk/kniv/kniv"
 	_ "github.com/mpppk/kniv/tumblr"
+	"github.com/mpppk/kniv/twitter"
 	_ "github.com/mpppk/kniv/twitter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"log"
 	"os"
 	"path"
 	"time"
@@ -23,7 +25,7 @@ var rootCmd = &cobra.Command{
 		//rootDownloadDir := viper.GetString("global.download_dir")
 		//dl := downloader.New(100000, 3000)
 		//
-		//crawlersSetting := viper.GetStringMap("crawlers")
+		crawlersSetting := viper.GetStringMap("crawlers")
 		//
 		//for _, crawlerFactory := range kniv.CrawlerFactories {
 		//	crawler, err := crawlerFactory.Create(crawlersSetting)
@@ -35,16 +37,30 @@ var rootCmd = &cobra.Command{
 		//}
 		//dl.StartCrawl()
 
+		setting, ok := crawlersSetting["twitter"].(map[string]interface{})
+		if !ok {
+			log.Fatal("invalid twitter setting")
+		}
+		twitterProcessor, err := twitter.NewProcessorFromConfigMap(100000, setting)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		dispatcher := kniv.NewDispatcher(100000)
+		dispatcher.RegisterProcessor("init", twitterProcessor)
 		dispatcher.RegisterProcessor("twitter.image", kniv.NewImageDownloadProcessor(100000, "idp"))
 		go dispatcher.Start()
 		dispatcher.StartProcessors()
 		dispatcher.AddResource(kniv.Resource{
-			ResourceType:     "twitter.image",
-			NextResourceType: "end",
-			Url:              "http://pbs.twimg.com/media/DXCkNTeVwAAENcr.jpg",
-			DstPath:          "test.jpg",
+			ResourceType: "init",
 		})
+		//dispatcher.AddResource(kniv.Resource{
+		//	ResourceType:     "twitter.image",
+		//	NextResourceType: "end",
+		//	Url:              "http://pbs.twimg.com/media/DXCkNTeVwAAENcr.jpg",
+		//	DstPath:          "test.jpg",
+		//})
 		time.Sleep(10 * time.Minute)
 	},
 }
