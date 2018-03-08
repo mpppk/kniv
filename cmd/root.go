@@ -47,8 +47,11 @@ var rootCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
+		delayProcessor := kniv.NewDelayProcessor(100000, 5000)
+
 		dispatcher := kniv.NewDispatcher(100000)
 		dispatcher.RegisterProcessor("init", twitterProcessor)
+		dispatcher.RegisterProcessor("twitter.image.delay", delayProcessor)
 		dispatcher.RegisterProcessor("twitter.image", kniv.NewImageDownloadProcessor(100000, "idp"))
 		go dispatcher.Start()
 		dispatcher.StartProcessors()

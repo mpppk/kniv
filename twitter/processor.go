@@ -36,8 +36,8 @@ func (c *Processor) Process(resource kniv.Resource) ([]kniv.Resource, error) {
 	for _, tweet := range tweets {
 		for _, media := range tweet.Entities.Media {
 			r := kniv.Resource{
-				ResourceType:     "twitter.image",
-				NextResourceType: "end", // TODO: Add NextResourceType by dispatcher
+				ResourceType:     "twitter.image.delay", // FIXME
+				NextResourceType: "end",                 // TODO: Add NextResourceType by dispatcher
 				Url:              media.Media_url,
 				DstPath:          path.Join("twitter", c.config.ScreenName),
 			}
