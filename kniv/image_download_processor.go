@@ -1,5 +1,12 @@
 package kniv
 
+import "errors"
+
+type DownloadResultEvent struct {
+	*BaseEvent
+	Success bool
+}
+
 type ImageDownloadProcessor struct {
 	*BaseProcessor
 	rootDestination string
@@ -8,15 +15,19 @@ type ImageDownloadProcessor struct {
 func NewImageDownloadProcessor(queueSize int, rootDestination string) *ImageDownloadProcessor {
 	return &ImageDownloadProcessor{
 		BaseProcessor: &BaseProcessor{
-			Name:    "image download processor",
-			inChan:  make(chan Resource, queueSize),
+			Name:    "downloader",
+			inChan:  make(chan Event, queueSize),
 			Process: DownloadFromResource,
 		},
 		rootDestination: rootDestination,
 	}
 }
 
-func DownloadFromResource(resource Resource) ([]Resource, error) {
-	_, err := Download(resource.Url, resource.DstPath)
-	return []Resource{{ResourceType: resource.NextResourceType}}, err
+func DownloadFromResource(event Event) ([]Event, error) {
+	urlEvent, ok := event.(*URLEvent)
+	if !ok {
+		return []Event{}, errors.New("invalid dispatched event found in ImageDownloadProcessor") // FIXME
+	}
+	_, err := Download(urlEvent.Url, urlEvent.Group)
+	return []Event{}, err // FIXME
 }

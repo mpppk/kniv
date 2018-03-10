@@ -23,7 +23,7 @@ type Config struct {
 type Crawler struct {
 	client          *anaconda.TwitterApi
 	config          *Config
-	resourceChannel chan kniv.Resource
+	resourceChannel chan kniv.URLEvent
 	rootDownloadDir string
 }
 
@@ -45,7 +45,7 @@ func NewCrawler(config *Config) kniv.Crawler {
 	}
 }
 
-func (c *Crawler) SetResourceChannel(q chan kniv.Resource) {
+func (c *Crawler) SetResourceChannel(q chan kniv.URLEvent) {
 	c.resourceChannel = q
 }
 

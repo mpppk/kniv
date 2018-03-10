@@ -33,7 +33,7 @@ type Crawler struct {
 	videoFetchNum   int
 	photoDstDir     string
 	videoDstDir     string
-	resourceChannel chan kniv.Resource
+	resourceChannel chan kniv.URLEvent
 	rootDownloadDir string
 }
 
@@ -66,7 +66,7 @@ func NewCrawler(opt *Opt) kniv.Crawler {
 	}
 }
 
-func (c *Crawler) SetResourceChannel(q chan kniv.Resource) {
+func (c *Crawler) SetResourceChannel(q chan kniv.URLEvent) {
 	c.resourceChannel = q
 }
 
@@ -137,10 +137,10 @@ func (c *Crawler) sendFileURLsToChannel(getFileUrls func(string, int) []string, 
 		}
 
 		for _, fileUrl := range fileUrls {
-			c.resourceChannel <- kniv.Resource{
+			c.resourceChannel <- kniv.URLEvent{
 				Url:          fileUrl,
 				ResourceType: "tumblr",
-				DstPath:      blogDstDir,
+				Group:        blogDstDir,
 			}
 		}
 

@@ -10,7 +10,7 @@ import (
 )
 
 type Downloader struct {
-	Channel         chan kniv.Resource
+	Channel         chan kniv.URLEvent
 	sleepMilliSec   time.Duration
 	rootDestination string
 	crawlers        []kniv.Crawler
@@ -19,7 +19,7 @@ type Downloader struct {
 
 func New(queueSize int, sleepMilliSec time.Duration) *Downloader {
 	return &Downloader{
-		Channel:       make(chan kniv.Resource, queueSize),
+		Channel:       make(chan kniv.URLEvent, queueSize),
 		sleepMilliSec: sleepMilliSec,
 		wg:            &sync.WaitGroup{},
 	}
@@ -39,7 +39,7 @@ func (d *Downloader) WatchResource() {
 			log.Printf("current URL queue size: %d\n", queueSize)
 		}
 
-		_, err := Download(resource.Url, resource.DstPath)
+		_, err := Download(resource.Url, resource.Group)
 		if err != nil {
 			log.Println(err)
 		}

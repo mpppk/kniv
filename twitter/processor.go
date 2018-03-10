@@ -26,21 +26,17 @@ func (c *Processor) Fetch(offset, limit int) ([]anaconda.Tweet, error) {
 	return c.client.GetUserTimeline(values)
 }
 
-func (c *Processor) Process(resource kniv.Resource) ([]kniv.Resource, error) {
+func (c *Processor) Process(resource kniv.Event) ([]kniv.Event, error) {
 	tweets, err := c.Fetch(0, 10)
 	if err != nil {
 		return nil, err
 	}
 
-	var resources []kniv.Resource
+	var resources []kniv.Event
 	for _, tweet := range tweets {
 		for _, media := range tweet.Entities.Media {
-			r := kniv.Resource{
-				ResourceType:     "twitter.image.delay", // FIXME
-				NextResourceType: "end",                 // TODO: Add NextResourceType by dispatcher
-				Url:              media.Media_url,
-				DstPath:          path.Join("twitter", c.config.ScreenName),
-			}
+			r := kniv.NewURLEvent(media.Media_url, path.Join("twitter", c.config.ScreenName), 10, 10) // FIXME
+			r.PushLabel("twitter.image.delay")                                                        // FIXME
 			resources = append(resources, r)
 			fmt.Println(media.Media_url)
 		}

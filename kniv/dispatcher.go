@@ -1,29 +1,32 @@
 package kniv
 
 import (
-	"fmt"
 	"log"
 )
 
 type registeredProcessor struct {
-	resourceType ResourceType
-	processor    Processor
+	consumeLabels []Label
+	produceLabels []Label
+	processor     Processor
 }
 
 type registeredProcessors []*registeredProcessor
 
-func (rs registeredProcessors) add(resourceType ResourceType, processor Processor) {
+func (rs registeredProcessors) add(consumeLabels, produceLabels []Label, processor Processor) {
 	rs = append(rs, &registeredProcessor{
-		resourceType: resourceType,
-		processor:    processor,
+		consumeLabels: consumeLabels,
+		produceLabels: produceLabels,
+		processor:     processor,
 	})
 }
 
-func (rs registeredProcessors) filter(resourceType ResourceType) registeredProcessors {
+func (rs registeredProcessors) filterByConsumeLabel(label Label) registeredProcessors {
 	var ret registeredProcessors
 	for _, r := range rs {
-		if r.resourceType == resourceType {
-			ret = append(ret, r)
+		for _, consumeLabel := range r.consumeLabels {
+			if consumeLabel == label {
+				ret = append(ret, r)
+			}
 		}
 	}
 	return ret
@@ -44,40 +47,40 @@ func (rs registeredProcessors) start() {
 
 type Dispatcher struct {
 	registeredProcessors registeredProcessors
-	queue                chan Resource
+	queue                chan Event
 }
 
 func NewDispatcher(queueSize int) *Dispatcher {
 	return &Dispatcher{
-		queue: make(chan Resource, queueSize),
+		queue: make(chan Event, queueSize),
 	}
 }
 
-func (d *Dispatcher) RegisterProcessor(resourceType ResourceType, processor Processor) {
+func (d *Dispatcher) RegisterProcessor(consumeLabels, produceLabels []Label, processor Processor) {
 	processor.SetOutChannel(d.queue)
 	d.registeredProcessors = append(d.registeredProcessors, &registeredProcessor{
-		resourceType: resourceType,
-		processor:    processor,
+		consumeLabels: consumeLabels,
+		produceLabels: produceLabels,
+		processor:     processor,
 	})
 }
 
-func (d *Dispatcher) AddResource(resource Resource) {
-	d.queue <- resource
+func (d *Dispatcher) AddResource(event Event) {
+	d.queue <- event
 }
 
 func (d *Dispatcher) Start() {
-	for resource := range d.queue {
-		log.Println("new resource:", resource)
-		filteredProcessors := d.registeredProcessors.filter(resource.ResourceType)
+	for event := range d.queue {
+		log.Printf("new event: %#v", event)
+		filteredProcessors := d.registeredProcessors.filterByConsumeLabel(event.GetLatestLabel())
 		if len(filteredProcessors) == 0 {
-			log.Println(resource.ResourceType + " not found")
+			log.Println(event.GetLatestLabel() + " not found")
 			continue
 		}
 
 		for _, processor := range filteredProcessors.toProcessors() {
-			fmt.Println("resource consumed by ", processor.GetName())
-			fmt.Println(&processor)
-			processor.Enqueue(resource)
+			log.Println("event is sent to", processor.GetName())
+			processor.Enqueue(event)
 		}
 	}
 }

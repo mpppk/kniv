@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/mitchellh/go-homedir"
 	"github.com/mpppk/kniv/kniv"
-	_ "github.com/mpppk/kniv/tumblr"
+	//_ "github.com/mpppk/kniv/tumblr"
 	"github.com/mpppk/kniv/twitter"
 	_ "github.com/mpppk/kniv/twitter"
 	"github.com/spf13/cobra"
@@ -50,21 +50,15 @@ var rootCmd = &cobra.Command{
 		delayProcessor := kniv.NewDelayProcessor(100000, 5000)
 
 		dispatcher := kniv.NewDispatcher(100000)
-		dispatcher.RegisterProcessor("init", twitterProcessor)
-		dispatcher.RegisterProcessor("twitter.image.delay", delayProcessor)
-		dispatcher.RegisterProcessor("twitter.image", kniv.NewImageDownloadProcessor(100000, "idp"))
+		dispatcher.RegisterProcessor([]kniv.Label{"init"}, []kniv.Label{}, twitterProcessor) // FIXME
+		dispatcher.RegisterProcessor([]kniv.Label{"twitter.image.delay"}, []kniv.Label{}, delayProcessor)
+		dispatcher.RegisterProcessor([]kniv.Label{"twitter.image"}, []kniv.Label{}, kniv.NewImageDownloadProcessor(100000, "idp"))
 		go dispatcher.Start()
 		dispatcher.StartProcessors()
-		dispatcher.AddResource(kniv.Resource{
-			ResourceType: "init",
-		})
-		//dispatcher.AddResource(kniv.Resource{
-		//	ResourceType:     "twitter.image",
-		//	NextResourceType: "end",
-		//	Url:              "http://pbs.twimg.com/media/DXCkNTeVwAAENcr.jpg",
-		//	DstPath:          "test.jpg",
-		//})
-		time.Sleep(10 * time.Minute)
+		initEvent := &kniv.BaseEvent{} // FIXME
+		initEvent.PushLabel("init")
+		dispatcher.AddResource(initEvent)
+		time.Sleep(10 * time.Minute) // FIXME
 	},
 }
 

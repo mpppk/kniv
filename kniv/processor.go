@@ -1,39 +1,38 @@
 package kniv
 
 import (
-	"fmt"
 	"log"
 )
 
 type BaseProcessor struct {
 	Name    string
-	inChan  chan Resource
-	outChan chan Resource
-	Process func(resource Resource) ([]Resource, error)
+	inChan  chan Event
+	outChan chan Event
+	Process func(resource Event) ([]Event, error)
 }
 
 func (b *BaseProcessor) GetName() string {
 	return b.Name
 }
 
-func (b *BaseProcessor) Enqueue(resource Resource) {
+func (b *BaseProcessor) Enqueue(resource Event) {
 	b.inChan <- resource
 }
 
-func (b *BaseProcessor) SetOutChannel(outChan chan Resource) {
+func (b *BaseProcessor) SetOutChannel(outChan chan Event) {
 	b.outChan = outChan
 }
 
 func (b *BaseProcessor) Start() {
-	for resource := range b.inChan {
-		fmt.Println(b.GetName(), "start processing:", resource)
-		processedResources, err := b.Process(resource)
+	for event := range b.inChan {
+		log.Printf("%s has been started event processing: %#v", b.GetName(), event)
+		processedEvent, err := b.Process(event)
 		if err != nil {
 			// TODO: Add err chan
 			log.Println(err)
 			continue
 		}
-		for _, r := range processedResources {
+		for _, r := range processedEvent {
 			b.outChan <- r
 		}
 	}
@@ -42,13 +41,13 @@ func (b *BaseProcessor) Start() {
 func NewBaseProcessor(queueSize int) *BaseProcessor {
 	return &BaseProcessor{
 		Name:   "base procesor",
-		inChan: make(chan Resource, queueSize),
+		inChan: make(chan Event, queueSize),
 	}
 }
 
 type Processor interface {
 	GetName() string
-	Enqueue(resource Resource)
-	SetOutChannel(outChan chan Resource)
+	Enqueue(resource Event)
+	SetOutChannel(outChan chan Event)
 	Start()
 }

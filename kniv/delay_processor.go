@@ -11,7 +11,7 @@ func NewDelayProcessor(queueSize int, sleepMilliSec time.Duration) *DelayProcess
 	delayProcessor := &DelayProcessor{
 		BaseProcessor: &BaseProcessor{
 			Name:   "delay processor",
-			inChan: make(chan Resource, queueSize),
+			inChan: make(chan Event, queueSize),
 		},
 		sleepMilliSec: sleepMilliSec * time.Millisecond,
 	}
@@ -19,9 +19,8 @@ func NewDelayProcessor(queueSize int, sleepMilliSec time.Duration) *DelayProcess
 	return delayProcessor
 }
 
-func (d *DelayProcessor) wait(resource Resource) ([]Resource, error) {
+func (d *DelayProcessor) wait(resource Event) ([]Event, error) {
 	time.Sleep(d.sleepMilliSec)
-	resource.ResourceType = "twitter.image" // FIXME temp
-	resource.NextResourceType = "end"       // FIXME temp
-	return []Resource{resource}, nil
+	resource.PushLabel("twitter.image") // FIXME temp
+	return []Event{resource}, nil
 }
