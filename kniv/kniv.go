@@ -5,24 +5,7 @@ import (
 	"sync"
 )
 
-type ResourceType string
 type Label string
-
-type URLEvent struct {
-	*BaseEvent
-}
-
-func NewURLEvent(url, group string, routesCapacity, labelsCapacity int) *URLEvent {
-	payload := map[string]interface{}{
-		"url":   url,
-		"group": group,
-	}
-	urlEvent := &URLEvent{
-		BaseEvent: NewBaseEvent(routesCapacity, labelsCapacity),
-	}
-	urlEvent.SetPayload(payload)
-	return urlEvent
-}
 
 type EventPayload map[string]interface{}
 
@@ -58,8 +41,9 @@ type BaseEvent struct {
 
 func NewBaseEvent(routesCapacity, labelsCapacity int) *BaseEvent {
 	return &BaseEvent{
-		routes: make([]string, 0, routesCapacity),
-		labels: make([]Label, 0, labelsCapacity),
+		routes:  make([]string, 0, routesCapacity),
+		labels:  make([]Label, 0, labelsCapacity),
+		payload: map[string]interface{}{},
 	}
 }
 
@@ -101,7 +85,7 @@ func (b *BaseEvent) GetPayload() EventPayload {
 }
 
 type Crawler interface {
-	SetResourceChannel(chan URLEvent)
+	SetResourceChannel(chan Event)
 	SetRootDownloadDir(dir string)
 	StartResourceSending(wg *sync.WaitGroup)
 }

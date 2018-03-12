@@ -35,8 +35,10 @@ func (c *Processor) Process(resource kniv.Event) ([]kniv.Event, error) {
 	var resources []kniv.Event
 	for _, tweet := range tweets {
 		for _, media := range tweet.Entities.Media {
-			r := kniv.NewURLEvent(media.Media_url, path.Join("twitter", c.config.ScreenName), 10, 10) // FIXME
-			r.PushLabel("twitter.image.delay")                                                        // FIXME
+			r := kniv.NewBaseEvent(10, 10)
+			r.GetPayload()["url"] = media.Media_url
+			r.GetPayload()["group"] = path.Join("twitter", c.config.ScreenName) // FIXME
+			r.PushLabel("twitter.image.delay")                                  // FIXME
 			resources = append(resources, r)
 			fmt.Println(media.Media_url)
 		}

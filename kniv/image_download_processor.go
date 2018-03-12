@@ -1,7 +1,5 @@
 package kniv
 
-import "errors"
-
 type DownloadResultEvent struct {
 	*BaseEvent
 	Success bool
@@ -24,17 +22,12 @@ func NewImageDownloadProcessor(queueSize int, rootDestination string) *ImageDown
 }
 
 func DownloadFromResource(event Event) ([]Event, error) {
-	urlEvent, ok := event.(*URLEvent)
-	if !ok {
-		return []Event{}, errors.New("invalid dispatched event found in ImageDownloadProcessor") // FIXME
-	}
-
-	eventUrl, err := urlEvent.GetPayload().GetString("url")
+	eventUrl, err := event.GetPayload().GetString("url")
 	if err != nil {
 		return []Event{}, err // FIXME
 	}
 
-	group, err := urlEvent.GetPayload().GetString("group")
+	group, err := event.GetPayload().GetString("group")
 	if err != nil {
 		return []Event{}, err // FIXME
 	}
