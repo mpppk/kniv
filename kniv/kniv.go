@@ -1,6 +1,7 @@
 package kniv
 
 import (
+	"errors"
 	"sync"
 )
 
@@ -9,16 +10,33 @@ type Label string
 
 type URLEvent struct {
 	*BaseEvent
-	Url   string
-	Group string
 }
 
 func NewURLEvent(url, group string, routesCapacity, labelsCapacity int) *URLEvent {
-	return &URLEvent{
-		BaseEvent: NewBaseEvent(routesCapacity, labelsCapacity),
-		Url:       url,
-		Group:     group,
+	payload := map[string]interface{}{
+		"url":   url,
+		"group": group,
 	}
+	urlEvent := &URLEvent{
+		BaseEvent: NewBaseEvent(routesCapacity, labelsCapacity),
+	}
+	urlEvent.SetPayload(payload)
+	return urlEvent
+}
+
+type EventPayload map[string]interface{}
+
+func (e EventPayload) GetString(key string) (string, error) {
+	value, ok := e[key]
+	if !ok {
+		return "", errors.New(key + " not found in event payload")
+	}
+
+	strValue, ok := value.(string)
+	if !ok {
+		return "", errors.New(key + " is not string in event payload")
+	}
+	return strValue, nil
 }
 
 type Event interface {
@@ -28,11 +46,14 @@ type Event interface {
 	PushLabel(label Label)
 	GetLatestLabel() Label
 	GetLabels() []Label
+	SetPayload(payload EventPayload)
+	GetPayload() EventPayload
 }
 
 type BaseEvent struct {
-	routes []string
-	labels []Label
+	routes  []string
+	labels  []Label
+	payload EventPayload
 }
 
 func NewBaseEvent(routesCapacity, labelsCapacity int) *BaseEvent {
@@ -69,6 +90,14 @@ func (b *BaseEvent) GetLatestLabel() Label {
 		return "no labels exist"
 	}
 	return b.labels[len(b.labels)-1]
+}
+
+func (b *BaseEvent) SetPayload(payload EventPayload) {
+	b.payload = payload
+}
+
+func (b *BaseEvent) GetPayload() EventPayload {
+	return b.payload
 }
 
 type Crawler interface {

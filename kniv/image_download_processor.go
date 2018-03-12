@@ -28,6 +28,17 @@ func DownloadFromResource(event Event) ([]Event, error) {
 	if !ok {
 		return []Event{}, errors.New("invalid dispatched event found in ImageDownloadProcessor") // FIXME
 	}
-	_, err := Download(urlEvent.Url, urlEvent.Group)
+
+	eventUrl, err := urlEvent.GetPayload().GetString("url")
+	if err != nil {
+		return []Event{}, err // FIXME
+	}
+
+	group, err := urlEvent.GetPayload().GetString("group")
+	if err != nil {
+		return []Event{}, err // FIXME
+	}
+
+	_, err = Download(eventUrl, group)
 	return []Event{}, err // FIXME
 }
