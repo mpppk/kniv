@@ -19,8 +19,7 @@ func NewDelayProcessor(queueSize int, sleepMilliSec time.Duration) *DelayProcess
 	return delayProcessor
 }
 
-func (d *DelayProcessor) wait(resource Event) ([]Event, error) {
+func (d *DelayProcessor) wait(event Event) ([]Event, error) {
 	time.Sleep(d.sleepMilliSec)
-	resource.PushLabel("twitter.image") // FIXME temp
-	return []Event{resource}, nil
+	return []Event{event}, nil
 }

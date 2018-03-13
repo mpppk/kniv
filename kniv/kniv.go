@@ -23,28 +23,57 @@ func (e EventPayload) GetString(key string) (string, error) {
 }
 
 type Event interface {
+	GetId() uint64
+	SetId(uint64)
+	GetSourceId() uint64
+	SetSourceId(uint64)
 	PushRoute(route string)
 	GetRoutes() []string
 	PopLabel() Label
 	PushLabel(label Label)
+	PushLabels(labels []Label)
+	SetLabels(labels []Label)
+	GetProduceLabels() []Label
+	PushProduceLabels()
 	GetLatestLabel() Label
 	GetLabels() []Label
 	SetPayload(payload EventPayload)
 	GetPayload() EventPayload
+	Copy() Event
 }
 
 type BaseEvent struct {
-	routes  []string
-	labels  []Label
-	payload EventPayload
+	id            uint64
+	sourceId      uint64
+	routes        []string
+	labels        []Label
+	produceLabels []Label
+	payload       EventPayload
 }
 
 func NewBaseEvent(routesCapacity, labelsCapacity int) *BaseEvent {
 	return &BaseEvent{
-		routes:  make([]string, 0, routesCapacity),
-		labels:  make([]Label, 0, labelsCapacity),
-		payload: map[string]interface{}{},
+		routes:        make([]string, 0, routesCapacity),
+		labels:        make([]Label, 0, labelsCapacity),
+		produceLabels: make([]Label, 0, labelsCapacity),
+		payload:       EventPayload{},
 	}
+}
+
+func (b *BaseEvent) GetId() uint64 {
+	return b.id
+}
+
+func (b *BaseEvent) SetId(id uint64) {
+	b.id = id
+}
+
+func (b *BaseEvent) GetSourceId() uint64 {
+	return b.sourceId
+}
+
+func (b *BaseEvent) SetSourceId(id uint64) {
+	b.sourceId = id
 }
 
 func (b *BaseEvent) PushRoute(route string) {
@@ -56,13 +85,23 @@ func (b *BaseEvent) GetRoutes() []string {
 }
 
 func (b *BaseEvent) PopLabel() Label {
-	label := b.labels[0]
-	b.labels = b.labels[1:]
+	label := b.labels[len(b.labels)-1]
+	b.labels = b.labels[:len(b.labels)-1]
 	return label
 }
 
 func (b *BaseEvent) PushLabel(label Label) {
 	b.labels = append(b.labels, label)
+}
+
+func (b *BaseEvent) PushLabels(labels []Label) {
+	for _, label := range labels {
+		b.PushLabel(label)
+	}
+}
+
+func (b *BaseEvent) SetLabels(labels []Label) {
+	b.labels = labels
 }
 
 func (b *BaseEvent) GetLabels() []Label {
@@ -76,12 +115,33 @@ func (b *BaseEvent) GetLatestLabel() Label {
 	return b.labels[len(b.labels)-1]
 }
 
+func (b *BaseEvent) PushProduceLabels() {
+	for _, l := range b.produceLabels {
+		b.PushLabel(l)
+	}
+	b.produceLabels = make([]Label, 0, len(b.produceLabels)) // FIXME
+}
+
+func (b *BaseEvent) GetProduceLabels() []Label {
+	return b.produceLabels
+}
+
 func (b *BaseEvent) SetPayload(payload EventPayload) {
 	b.payload = payload
 }
 
 func (b *BaseEvent) GetPayload() EventPayload {
 	return b.payload
+}
+
+func (b *BaseEvent) Copy() Event {
+	e := NewBaseEvent(len(b.routes), len(b.labels))
+	newPayload := EventPayload{}
+	for k, v := range e.payload {
+		newPayload[k] = v // FIXME
+	}
+	e.payload = newPayload
+	return e
 }
 
 type Crawler interface {

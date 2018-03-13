@@ -26,21 +26,24 @@ func (b *BaseProcessor) SetOutChannel(outChan chan Event) {
 func (b *BaseProcessor) Start() {
 	for event := range b.inChan {
 		log.Printf("%s has been started event processing: %#v", b.GetName(), event)
+		sourceEventId := event.GetId()
 		processedEvent, err := b.Process(event)
 		if err != nil {
 			// TODO: Add err chan
 			log.Println(err)
 			continue
 		}
-		for _, r := range processedEvent {
-			b.outChan <- r
+		for _, e := range processedEvent {
+			e.SetSourceId(sourceEventId)
+			e.SetLabels(event.GetLabels())
+			b.outChan <- e
 		}
 	}
 }
 
 func NewBaseProcessor(queueSize int) *BaseProcessor {
 	return &BaseProcessor{
-		Name:   "base procesor",
+		Name:   "base processor",
 		inChan: make(chan Event, queueSize),
 	}
 }
