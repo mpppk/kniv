@@ -4,18 +4,13 @@ import (
 	"path"
 )
 
-type DownloadResultEvent struct {
-	*BaseEvent
-	Success bool
-}
-
-type ImageDownloadProcessor struct {
+type Downloader struct {
 	*BaseProcessor
 	rootDestination string
 }
 
-func NewImageDownloadProcessor(queueSize int, rootDestination string) *ImageDownloadProcessor {
-	return &ImageDownloadProcessor{
+func NewDownloader(queueSize int, rootDestination string) *Downloader {
+	return &Downloader{
 		BaseProcessor: &BaseProcessor{
 			Name:    "downloader",
 			inChan:  make(chan Event, queueSize),

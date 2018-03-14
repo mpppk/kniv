@@ -52,7 +52,7 @@ var rootCmd = &cobra.Command{
 		dispatcher := kniv.NewDispatcher(100000)
 		dispatcher.RegisterProcessor([]kniv.Label{"init"}, []kniv.Label{"download", "delay"}, twitterProcessor) // FIXME
 		dispatcher.RegisterProcessor([]kniv.Label{"delay"}, []kniv.Label{}, delayProcessor)
-		dispatcher.RegisterProcessor([]kniv.Label{"download"}, []kniv.Label{}, kniv.NewImageDownloadProcessor(100000, "idp"))
+		dispatcher.RegisterProcessor([]kniv.Label{"download"}, []kniv.Label{}, kniv.NewDownloader(100000, "idp"))
 		go dispatcher.Start()
 		dispatcher.StartProcessors()
 		initEvent := &kniv.BaseEvent{} // FIXME
