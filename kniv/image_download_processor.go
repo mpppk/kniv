@@ -1,5 +1,9 @@
 package kniv
 
+import (
+	"path"
+)
+
 type DownloadResultEvent struct {
 	*BaseEvent
 	Success bool
@@ -32,6 +36,14 @@ func DownloadFromResource(event Event) ([]Event, error) {
 		return []Event{}, err // FIXME
 	}
 
-	_, err = Download(eventUrl, group)
-	return []Event{}, err // FIXME
+	user, err := event.GetPayload().GetString("user")
+	if err != nil {
+		return []Event{}, err // FIXME
+	}
+
+	downloadPath := path.Join(group, user)
+	downloaded, err := Download(eventUrl, downloadPath)
+	event.GetPayload()["downloaded"] = downloaded
+	event.GetPayload()["download_path"] = downloadPath // FIXME use root dir and user
+	return []Event{}, err
 }

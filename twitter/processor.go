@@ -26,7 +26,9 @@ func (c *Processor) Fetch(offset, limit int) ([]anaconda.Tweet, error) {
 }
 
 func (c *Processor) Process(event kniv.Event) ([]kniv.Event, error) {
-	tweets, err := c.Fetch(0, 10)
+	offset := 0 // FIXME
+	limit := 10 // FIXME
+	tweets, err := c.Fetch(offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -37,6 +39,9 @@ func (c *Processor) Process(event kniv.Event) ([]kniv.Event, error) {
 			r := kniv.NewBaseEvent(10, 10)
 			r.GetPayload()["url"] = media.Media_url
 			r.GetPayload()["group"] = path.Join("twitter", c.config.ScreenName) // FIXME
+			r.GetPayload()["offset"] = offset
+			r.GetPayload()["limit"] = limit
+			r.GetPayload()["user"] = c.config.ScreenName
 			events = append(events, r)
 		}
 	}
