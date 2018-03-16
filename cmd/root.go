@@ -41,17 +41,20 @@ var rootCmd = &cobra.Command{
 		if !ok {
 			log.Fatal("invalid twitter setting")
 		}
-		twitterProcessor, err := twitter.NewProcessorFromConfigMap(100000, setting)
 
+		twitterProcessor, err := twitter.NewProcessorFromConfigMap(100000, setting)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		delayProcessor := kniv.NewDelayProcessor(100000, 5000)
 
+		//jsExecutor := kniv.NewJSExecutor(100000, []string{"console.log(p)"})
+
 		dispatcher := kniv.NewDispatcher(100000)
 		dispatcher.RegisterProcessor([]kniv.Label{"init"}, []kniv.Label{"download", "delay"}, twitterProcessor) // FIXME
 		dispatcher.RegisterProcessor([]kniv.Label{"delay"}, []kniv.Label{}, delayProcessor)
+		//dispatcher.RegisterProcessor([]kniv.Label{"delay"}, []kniv.Label{}, jsExecutor) // FIXME TEMp
 		dispatcher.RegisterProcessor([]kniv.Label{"download"}, []kniv.Label{}, kniv.NewDownloader(100000, "idp"))
 		go dispatcher.Start()
 		dispatcher.StartProcessors()

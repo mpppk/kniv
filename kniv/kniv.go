@@ -22,6 +22,29 @@ func (e EventPayload) GetString(key string) (string, error) {
 	return strValue, nil
 }
 
+func (e EventPayload) HasKey(key string) bool {
+	_, exist := e[key]
+	return exist
+}
+
+func (e EventPayload) HasEveryPayloadKeys(keys []string) bool {
+	for _, key := range keys {
+		if !e.HasKey(key) {
+			return false
+		}
+	}
+	return true
+}
+
+func (e EventPayload) HasSomePayloadKeys(keys []string) bool {
+	for _, key := range keys {
+		if e.HasKey(key) {
+			return true
+		}
+	}
+	return false
+}
+
 type Event interface {
 	GetId() uint64
 	SetId(uint64)
