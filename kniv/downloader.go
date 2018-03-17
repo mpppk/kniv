@@ -1,6 +1,7 @@
 package kniv
 
 import (
+	"fmt"
 	"path"
 )
 
@@ -10,17 +11,18 @@ type Downloader struct {
 }
 
 func NewDownloader(queueSize int, rootDestination string) *Downloader {
-	return &Downloader{
+	downloader := &Downloader{
 		BaseProcessor: &BaseProcessor{
-			Name:    "downloader",
-			inChan:  make(chan Event, queueSize),
-			Process: DownloadFromResource,
+			Name:   "downloader",
+			inChan: make(chan Event, queueSize),
 		},
 		rootDestination: rootDestination,
 	}
+	downloader.BaseProcessor.Process = downloader.DownloadFromResource
+	return downloader
 }
 
-func DownloadFromResource(event Event) ([]Event, error) {
+func (p *Downloader) DownloadFromResource(event Event) ([]Event, error) {
 	eventUrl, err := event.GetPayload().GetString("url")
 	if err != nil {
 		return []Event{}, err // FIXME
@@ -36,9 +38,9 @@ func DownloadFromResource(event Event) ([]Event, error) {
 		return []Event{}, err // FIXME
 	}
 
-	downloadPath := path.Join(group, user)
+	downloadPath := path.Join(p.rootDestination, group, user)
 	downloaded, err := Download(eventUrl, downloadPath)
 	event.GetPayload()["downloaded"] = downloaded
-	event.GetPayload()["download_path"] = downloadPath // FIXME use root dir and user
-	return []Event{}, err
+	event.GetPayload()["download_path"] = downloadPath
+	return []Event{event}, err
 }

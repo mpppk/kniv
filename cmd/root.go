@@ -42,20 +42,27 @@ var rootCmd = &cobra.Command{
 			log.Fatal("invalid twitter setting")
 		}
 
+		dispatcher := kniv.NewDispatcher(100000)
+
 		twitterProcessor, err := twitter.NewProcessorFromConfigMap(100000, setting)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		delayProcessor := kniv.NewDelayProcessor(100000, 5000)
+		delayProcessor := kniv.NewDelayProcessor(100000, 1000)
 
-		//jsExecutor := kniv.NewJSExecutor(100000, []string{"console.log(p)"})
+		tasks := []kniv.FilterTask{
+			kniv.NewFilterByJSTask([]string{"p.downloaded"}),
+			kniv.NewDistinctTask([]string{"offset"}),
+			kniv.NewSelectPayloadTask([]string{"offset", "limit", "user", "group"}),
+			kniv.NewTransformByJSTask([]string{"p.offset += p.limit", "console.log(p)"}),
+		}
+		customProcessor := kniv.NewCustomProcessor(100000, tasks)
 
-		dispatcher := kniv.NewDispatcher(100000)
-		dispatcher.RegisterProcessor([]kniv.Label{"init"}, []kniv.Label{"download", "delay"}, twitterProcessor) // FIXME
+		dispatcher.RegisterProcessor([]kniv.Label{"init"}, []kniv.Label{"transform", "download", "delay"}, twitterProcessor) // FIXME
 		dispatcher.RegisterProcessor([]kniv.Label{"delay"}, []kniv.Label{}, delayProcessor)
-		//dispatcher.RegisterProcessor([]kniv.Label{"delay"}, []kniv.Label{}, jsExecutor) // FIXME TEMp
 		dispatcher.RegisterProcessor([]kniv.Label{"download"}, []kniv.Label{}, kniv.NewDownloader(100000, "idp"))
+		dispatcher.RegisterProcessor([]kniv.Label{"transform"}, []kniv.Label{}, customProcessor)
 		go dispatcher.Start()
 		dispatcher.StartProcessors()
 		initEvent := &kniv.BaseEvent{} // FIXME
