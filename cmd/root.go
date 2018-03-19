@@ -2,17 +2,19 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/mitchellh/go-homedir"
 	"github.com/mpppk/kniv/kniv"
 	//_ "github.com/mpppk/kniv/tumblr"
-	"github.com/mpppk/kniv/twitter"
-	_ "github.com/mpppk/kniv/twitter"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"log"
 	"os"
 	"path"
 	"time"
+
+	"github.com/mpppk/kniv/twitter"
+	_ "github.com/mpppk/kniv/twitter"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var cfgFile string
@@ -59,15 +61,19 @@ var rootCmd = &cobra.Command{
 		}
 		customProcessor := kniv.NewCustomProcessor(100000, tasks)
 
-		dispatcher.RegisterProcessor([]kniv.Label{"init"}, []kniv.Label{"transform", "download", "delay"}, twitterProcessor) // FIXME
+		dispatcher.RegisterProcessor([]kniv.Label{"init", "twitter"}, []kniv.Label{"transform", "download", "delay"}, twitterProcessor) // FIXME
 		dispatcher.RegisterProcessor([]kniv.Label{"delay"}, []kniv.Label{}, delayProcessor)
 		dispatcher.RegisterProcessor([]kniv.Label{"download"}, []kniv.Label{}, kniv.NewDownloader(100000, "idp"))
-		dispatcher.RegisterProcessor([]kniv.Label{"transform"}, []kniv.Label{}, customProcessor)
+		dispatcher.RegisterProcessor([]kniv.Label{"transform"}, []kniv.Label{"twitter"}, customProcessor)
 		go dispatcher.Start()
 		dispatcher.StartProcessors()
 		initEvent := &kniv.BaseEvent{} // FIXME
 		initEvent.SetSourceId(0)
 		initEvent.PushLabel("init")
+		initEvent.SetPayload(map[string]interface{}{
+			"offset": 0,
+			"limit":  50,
+		})
 		dispatcher.AddResource(initEvent)
 		time.Sleep(10 * time.Minute) // FIXME
 	},
