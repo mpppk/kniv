@@ -1,7 +1,6 @@
 package kniv
 
 import (
-	"fmt"
 	"path"
 )
 

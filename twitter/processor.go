@@ -1,10 +1,15 @@
 package twitter
 
 import (
-	"github.com/ChimeraCoder/anaconda"
-	"github.com/mpppk/kniv/kniv"
 	"net/url"
 	"path"
+
+	"log"
+
+	"fmt"
+
+	"github.com/ChimeraCoder/anaconda"
+	"github.com/mpppk/kniv/kniv"
 )
 
 type Processor struct {
@@ -14,9 +19,10 @@ type Processor struct {
 }
 
 func (c *Processor) Fetch(offset, limit int) ([]anaconda.Tweet, error) {
+	// FIXME use offset
 	values := url.Values{
 		"screen_name":     []string{c.config.ScreenName},
-		"count":           []string{"200"},
+		"count":           []string{fmt.Sprint(limit)},
 		"exclude_replies": []string{"true"},
 		"trim_user":       []string{"true"},
 		"include_rts":     []string{"false"},
@@ -26,8 +32,29 @@ func (c *Processor) Fetch(offset, limit int) ([]anaconda.Tweet, error) {
 }
 
 func (c *Processor) Process(event kniv.Event) ([]kniv.Event, error) {
-	offset := 0 // FIXME
-	limit := 10 // FIXME
+	payload := event.GetPayload()
+	offsetPayload, ok := payload["offset"]
+	if !ok {
+		log.Fatal("offset key not found in payload")
+	}
+	offset, ok := offsetPayload.(int)
+	if !ok {
+		log.Fatalf("offset key does not have int: %T", offset)
+	}
+
+	limitPaylod, ok := payload["limit"]
+	if !ok {
+		log.Fatal("limit key not found in payload")
+	}
+	limit, ok := limitPaylod.(int)
+	if !ok {
+		log.Fatalf("offset key does not have int: %T", offset)
+	}
+
+	if limit > c.config.MaxOffset {
+		return []kniv.Event{}, nil
+	}
+
 	tweets, err := c.Fetch(offset, limit)
 	if err != nil {
 		return nil, err

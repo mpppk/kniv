@@ -3,12 +3,13 @@ package twitter
 import (
 	"errors"
 	"fmt"
-	"github.com/ChimeraCoder/anaconda"
-	"github.com/mpppk/kniv/kniv"
 	"log"
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/ChimeraCoder/anaconda"
+	"github.com/mpppk/kniv/kniv"
 )
 
 type Config struct {
@@ -18,6 +19,7 @@ type Config struct {
 	AccessToken       string
 	AccessTokenSecret string
 	SinceDate         time.Time
+	MaxOffset         int
 }
 
 type Crawler struct {
@@ -109,6 +111,8 @@ func toConfig(configMap map[string]interface{}) (*Config, error) {
 	} else {
 		return nil, errors.New("access_token_secret not found in setting file")
 	}
+
+	config.MaxOffset = 100 // FIXME
 	return config, nil
 }
 

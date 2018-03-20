@@ -52,10 +52,13 @@ type Event interface {
 	SetSourceId(uint64)
 	PushRoute(route string)
 	GetRoutes() []string
+	SetRoutes([]string)
+	CopyRoutes() []string
 	PopLabel() Label
 	PushLabel(label Label)
 	PushLabels(labels []Label)
 	SetLabels(labels []Label)
+	CopyLabels() []Label
 	GetProduceLabels() []Label
 	PushProduceLabels()
 	GetLatestLabel() Label
@@ -107,6 +110,16 @@ func (b *BaseEvent) GetRoutes() []string {
 	return b.routes
 }
 
+func (b *BaseEvent) SetRoutes(routes []string) {
+	b.routes = routes
+}
+
+func (b *BaseEvent) CopyRoutes() []string {
+	newRoutes := make([]string, len(b.routes))
+	copy(newRoutes, b.routes)
+	return newRoutes
+}
+
 func (b *BaseEvent) PopLabel() Label {
 	label := b.labels[len(b.labels)-1]
 	b.labels = b.labels[:len(b.labels)-1]
@@ -129,6 +142,12 @@ func (b *BaseEvent) SetLabels(labels []Label) {
 
 func (b *BaseEvent) GetLabels() []Label {
 	return b.labels
+}
+
+func (b *BaseEvent) CopyLabels() []Label {
+	newLabels := make([]Label, len(b.labels))
+	copy(newLabels, b.labels)
+	return newLabels
 }
 
 func (b *BaseEvent) GetLatestLabel() Label {
@@ -160,10 +179,12 @@ func (b *BaseEvent) GetPayload() EventPayload {
 func (b *BaseEvent) Copy() Event {
 	e := NewBaseEvent(len(b.routes), len(b.labels))
 	newPayload := EventPayload{}
-	for k, v := range e.payload {
+	for k, v := range b.payload {
 		newPayload[k] = v // FIXME
 	}
 	e.payload = newPayload
+	e.SetLabels(b.CopyLabels())
+	e.SetRoutes(b.CopyRoutes())
 	return e
 }
 

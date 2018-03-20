@@ -1,6 +1,7 @@
 package kniv
 
 import (
+	"fmt"
 	"log"
 )
 
@@ -82,10 +83,9 @@ func (d *Dispatcher) Start() {
 
 		d.eventId++
 		event.SetId(d.eventId)
-		log.Printf("%d -> %d: new event: %#v", event.GetSourceId(), event.GetId(), event)
+		log.Printf("%d -> %d: new event: %#v\n", event.GetSourceId(), event.GetId(), event)
 
 		consumedLabel := event.PopLabel()
-		log.Printf("%d: consume label: %s -> %s", event.GetId(), event.GetLabels(), consumedLabel)
 
 		filteredProcessors := d.registeredProcessors.filterByConsumeLabel(consumedLabel)
 
@@ -94,20 +94,24 @@ func (d *Dispatcher) Start() {
 			continue
 		}
 
-		for i, filteredProcessor := range filteredProcessors {
-			log.Println("event is sent to", filteredProcessor.processor.GetName())
-			if i > 0 {
-				event = event.Copy() // FIXME Copy is not complete implement
-				d.eventId++
-				event.SetId(d.eventId)
-			}
+		for _, filteredProcessor := range filteredProcessors {
+			//if i > 0 {
+			newEvent := event.Copy() // FIXME Copy is not complete implement
+			newEvent.PushRoute(fmt.Sprintf("%d->%d:%s", event.GetSourceId(), event.GetId(), consumedLabel))
+			d.eventId++
+			newEvent.SetId(d.eventId)
+			newEvent.SetSourceId(event.GetId())
+			//}
+			log.Printf("%d -> %d: fork %#v\n", event.GetId(), newEvent.GetId(), newEvent)
+			msg := fmt.Sprintf("%d -> %d: sent to %s: %s -> %s", event.GetId(), newEvent.GetId(), filteredProcessor.processor.GetName(), newEvent.GetLabels(), consumedLabel)
 
 			produceLabels := filteredProcessor.produceLabels
 			if len(produceLabels) > 0 {
-				log.Printf("%d: produce labels: %s <- %s", event.GetId(), event.GetLabels(), produceLabels)
-				event.PushLabels(produceLabels)
+				msg += fmt.Sprintf(" <- %s", produceLabels)
+				newEvent.PushLabels(produceLabels)
 			}
-			filteredProcessor.processor.Enqueue(event)
+			log.Println(msg)
+			filteredProcessor.processor.Enqueue(newEvent)
 		}
 	}
 }

@@ -3,9 +3,10 @@ package kniv
 import (
 	"errors"
 	"fmt"
-	"github.com/robertkrimen/otto"
 	"log"
 	"strings"
+
+	"github.com/robertkrimen/otto"
 )
 
 type CustomProcessor struct {
@@ -171,7 +172,7 @@ func (p *CustomProcessor) Process(event Event) ([]Event, error) {
 
 		if p == nil {
 			log.Printf("%d: event is filtered by task", event.GetId())
-			return []Event{}, nil
+			return nil, nil
 		}
 		newPayload = p
 	}
