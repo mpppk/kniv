@@ -21,24 +21,10 @@ var cfgFile string
 
 var rootCmd = &cobra.Command{
 	Use:   "kniv",
-	Short: "crawler",
+	Short: "real time event stream engine",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		//rootDownloadDir := viper.GetString("global.download_dir")
-		//dl := downloader.New(100000, 3000)
-		//
 		crawlersSetting := viper.GetStringMap("crawlers")
-		//
-		//for _, crawlerFactory := range kniv.CrawlerFactories {
-		//	crawler, err := crawlerFactory.Create(crawlersSetting)
-		//	crawler.SetRootDownloadDir(rootDownloadDir)
-		//	if err != nil {
-		//		log.Fatal(err)
-		//	}
-		//	dl.RegisterCrawler(crawler)
-		//}
-		//dl.StartCrawl()
-
 		setting, ok := crawlersSetting["twitter"].(map[string]interface{})
 		if !ok {
 			log.Fatal("invalid twitter setting")

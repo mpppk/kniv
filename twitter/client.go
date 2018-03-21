@@ -2,14 +2,6 @@ package twitter
 
 import (
 	"errors"
-	"fmt"
-	"log"
-	"net/url"
-	"sync"
-	"time"
-
-	"github.com/ChimeraCoder/anaconda"
-	"github.com/mpppk/kniv/kniv"
 )
 
 type Config struct {
@@ -18,71 +10,7 @@ type Config struct {
 	ConsumerSecret    string
 	AccessToken       string
 	AccessTokenSecret string
-	SinceDate         time.Time
 	MaxTweetNum       int
-}
-
-type Crawler struct {
-	client          *anaconda.TwitterApi
-	config          *Config
-	resourceChannel chan kniv.Event
-	rootDownloadDir string
-}
-
-func CreateClient(config *Config) *anaconda.TwitterApi {
-	anaconda.SetConsumerKey(config.ConsumerKey)
-	anaconda.SetConsumerSecret(config.ConsumerSecret)
-
-	api := anaconda.NewTwitterApi(config.AccessToken, config.AccessTokenSecret)
-	api.SetLogger(anaconda.BasicLogger) // logger を設定
-	return api
-}
-
-func NewCrawler(config *Config) kniv.Crawler {
-	client := CreateClient(config)
-
-	return &Crawler{
-		client: client,
-		config: config,
-	}
-}
-
-func (c *Crawler) SetResourceChannel(q chan kniv.Event) {
-	c.resourceChannel = q
-}
-
-func (c *Crawler) SetRootDownloadDir(dir string) {
-	c.rootDownloadDir = dir
-}
-
-func (c *Crawler) StartResourceSending(wg *sync.WaitGroup) {
-	defer wg.Done()
-	fmt.Println("start resource sending in twitter")
-	tweets, err := c.Fetch(0, 10)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("tweets num")
-	fmt.Println(len(tweets))
-
-	for _, tweet := range tweets {
-		for _, media := range tweet.Entities.Media {
-			fmt.Println(media.Media_url)
-		}
-	}
-}
-
-func (c *Crawler) Fetch(offset, limit int) ([]anaconda.Tweet, error) {
-	values := url.Values{
-		"screen_name":     []string{c.config.ScreenName},
-		"count":           []string{"200"},
-		"exclude_replies": []string{"true"},
-		"trim_user":       []string{"true"},
-		"include_rts":     []string{"false"},
-	}
-
-	return c.client.GetUserTimeline(values)
 }
 
 func toConfig(configMap map[string]interface{}) (*Config, error) {
@@ -114,16 +42,4 @@ func toConfig(configMap map[string]interface{}) (*Config, error) {
 
 	config.MaxTweetNum = 1000 // FIXME
 	return config, nil
-}
-
-type CrawlerFactory struct{}
-
-func (c *CrawlerFactory) Create(crawlersSetting map[string]interface{}) (kniv.Crawler, error) {
-	setting, ok := crawlersSetting["twitter"].(map[string]interface{})
-	if !ok {
-		return nil, errors.New("invalid setting in tumblr key")
-	}
-
-	config, err := toConfig(setting)
-	return NewCrawler(config), err
 }

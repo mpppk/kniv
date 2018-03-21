@@ -19,7 +19,6 @@ type Processor struct {
 }
 
 func (c *Processor) Fetch(maxId int64, count int) ([]anaconda.Tweet, error) {
-	// FIXME use maxId
 	values := url.Values{
 		"screen_name":     []string{c.config.ScreenName},
 		"count":           []string{fmt.Sprint(count)},
@@ -118,4 +117,13 @@ func NewProcessor(queueSize int, config *Config) Processor {
 	processor.BaseProcessor.Name = "twitter"
 	processor.BaseProcessor.Process = processor.Process
 	return processor
+}
+
+func CreateClient(config *Config) *anaconda.TwitterApi {
+	anaconda.SetConsumerKey(config.ConsumerKey)
+	anaconda.SetConsumerSecret(config.ConsumerSecret)
+
+	api := anaconda.NewTwitterApi(config.AccessToken, config.AccessTokenSecret)
+	api.SetLogger(anaconda.BasicLogger) // logger を設定
+	return api
 }
