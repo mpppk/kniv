@@ -19,7 +19,7 @@ type Config struct {
 	AccessToken       string
 	AccessTokenSecret string
 	SinceDate         time.Time
-	MaxOffset         int
+	MaxTweetNum       int
 }
 
 type Crawler struct {
@@ -112,14 +112,13 @@ func toConfig(configMap map[string]interface{}) (*Config, error) {
 		return nil, errors.New("access_token_secret not found in setting file")
 	}
 
-	config.MaxOffset = 100 // FIXME
+	config.MaxTweetNum = 1000 // FIXME
 	return config, nil
 }
 
 type CrawlerFactory struct{}
 
 func (c *CrawlerFactory) Create(crawlersSetting map[string]interface{}) (kniv.Crawler, error) {
-
 	setting, ok := crawlersSetting["twitter"].(map[string]interface{})
 	if !ok {
 		return nil, errors.New("invalid setting in tumblr key")

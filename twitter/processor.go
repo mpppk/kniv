@@ -18,14 +18,18 @@ type Processor struct {
 	config *Config
 }
 
-func (c *Processor) Fetch(offset, limit int) ([]anaconda.Tweet, error) {
-	// FIXME use offset
+func (c *Processor) Fetch(maxId int64, count int) ([]anaconda.Tweet, error) {
+	// FIXME use maxId
 	values := url.Values{
 		"screen_name":     []string{c.config.ScreenName},
-		"count":           []string{fmt.Sprint(limit)},
+		"count":           []string{fmt.Sprint(count)},
 		"exclude_replies": []string{"true"},
 		"trim_user":       []string{"true"},
 		"include_rts":     []string{"false"},
+	}
+
+	if maxId > 0 {
+		values["max_id"] = []string{fmt.Sprint(maxId - 1)} // minus 1 because max_id includes specified id tweet
 	}
 
 	return c.client.GetUserTimeline(values)
@@ -33,52 +37,71 @@ func (c *Processor) Fetch(offset, limit int) ([]anaconda.Tweet, error) {
 
 func (c *Processor) Process(event kniv.Event) ([]kniv.Event, error) {
 	payload := event.GetPayload()
-	offsetPayload, ok := payload["offset"]
+	sinceIdPayload, ok := payload["since_id"]
 	if !ok {
-		log.Fatal("offset key not found in payload")
+		sinceIdPayload = nil
 	}
-	var offset int
-	switch v := offsetPayload.(type) {
+	var sinceId int64
+	switch v := sinceIdPayload.(type) {
 	case int:
-		offset = v
+		sinceId = int64(v)
+	case int64:
+		sinceId = v
 	case float64:
-		offset = int(v)
+		sinceId = int64(v)
+	case nil:
+		sinceId = -1
 	}
 
-	limitPayload, ok := payload["limit"]
+	countPayload, ok := payload["count"]
 	if !ok {
-		log.Fatal("limit key not found in payload")
+		log.Fatal("count key not found in payload")
 	}
-	var limit int
-	switch v := limitPayload.(type) {
+	var count int
+	switch v := countPayload.(type) {
 	case int:
-		limit = v
+		count = v
 	case float64:
-		limit = int(v)
+		count = int(v)
 	}
 
-	if limit > c.config.MaxOffset {
-		return []kniv.Event{}, nil
-	}
+	tweetNum := 0
+	for {
+		if tweetNum >= c.config.MaxTweetNum {
+			return []kniv.Event{}, nil
+		}
 
-	tweets, err := c.Fetch(offset, limit)
-	if err != nil {
-		return nil, err
-	}
+		tweets, err := c.Fetch(sinceId, count)
+		if err != nil {
+			return nil, err
+		}
 
-	var events []kniv.Event
-	for _, tweet := range tweets {
-		for _, media := range tweet.Entities.Media {
-			r := kniv.NewBaseEvent(10, 10)
-			r.GetPayload()["url"] = media.Media_url
-			r.GetPayload()["group"] = path.Join("twitter", c.config.ScreenName) // FIXME
-			r.GetPayload()["offset"] = offset
-			r.GetPayload()["limit"] = limit
-			r.GetPayload()["user"] = c.config.ScreenName
-			events = append(events, r)
+		var nextSinceId int64
+		nextSinceId = -1
+		var events []kniv.Event
+		for _, tweet := range tweets {
+			for _, media := range tweet.Entities.Media {
+				r := kniv.NewBaseEvent(10, 10) // FIXME
+				r.GetPayload()["url"] = media.Media_url
+				r.GetPayload()["group"] = path.Join("twitter", c.config.ScreenName) // FIXME
+				r.GetPayload()["count"] = count
+				r.GetPayload()["user"] = c.config.ScreenName
+				events = append(events, r)
+			}
+			if tweet.Id < nextSinceId || nextSinceId < 0 {
+				nextSinceId = tweet.Id
+			}
+			tweetNum++
+		}
+
+		if len(events) > 0 {
+			for _, e := range events {
+				e.GetPayload()["since_id"] = nextSinceId
+			}
+
+			return events, nil
 		}
 	}
-	return events, nil
 }
 
 func NewProcessorFromConfigMap(queueSize int, configMap map[string]interface{}) (Processor, error) {

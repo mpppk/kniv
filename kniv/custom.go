@@ -171,7 +171,7 @@ func (p *CustomProcessor) Process(event Event) ([]Event, error) {
 		}
 
 		if p == nil {
-			log.Printf("%d: event is filtered by task", event.GetId())
+			log.Printf("%d: event is filtered by %T", event.GetId(), task)
 			return nil, nil
 		}
 		newPayload = p

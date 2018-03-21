@@ -55,9 +55,8 @@ var rootCmd = &cobra.Command{
 
 		tasks := []kniv.FilterTask{
 			kniv.NewFilterByJSTask([]string{"p.downloaded"}),
-			kniv.NewDistinctTask([]string{"offset"}),
-			kniv.NewSelectPayloadTask([]string{"offset", "limit", "user", "group"}),
-			kniv.NewTransformByJSTask([]string{"p.offset += p.limit", "console.log(p)"}),
+			kniv.NewDistinctTask([]string{"since_id"}),
+			kniv.NewSelectPayloadTask([]string{"since_id", "count", "user", "group"}),
 		}
 		customProcessor := kniv.NewCustomProcessor(100000, tasks)
 
@@ -71,8 +70,7 @@ var rootCmd = &cobra.Command{
 		initEvent.SetSourceId(0)
 		initEvent.PushLabel("init")
 		initEvent.SetPayload(map[string]interface{}{
-			"offset": 0,
-			"limit":  50,
+			"count": 100,
 		})
 		dispatcher.AddResource(initEvent)
 		time.Sleep(10 * time.Minute) // FIXME
