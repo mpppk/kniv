@@ -24,7 +24,8 @@ var rootCmd = &cobra.Command{
 	Short: "real time event stream engine",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		crawlersSetting := viper.GetStringMap("crawlers")
+		// FIXME don't load config via viper
+		crawlersSetting := viper.GetStringMap("processors")
 		setting, ok := crawlersSetting["twitter"].(map[string]interface{})
 		if !ok {
 			log.Fatal("invalid twitter setting")

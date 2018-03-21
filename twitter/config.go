@@ -40,6 +40,17 @@ func toConfig(configMap map[string]interface{}) (*Config, error) {
 		return nil, errors.New("access_token_secret not found in setting file")
 	}
 
-	config.MaxTweetNum = 1000 // FIXME
+	if maxTweetNum, ok := configMap["max_tweet_num"].(int); ok {
+		config.MaxTweetNum = maxTweetNum
+	} else {
+		return nil, errors.New("max_tweet_num not found in setting file")
+	}
+
+	if screenName, ok := configMap["screen_name"].(string); ok {
+		config.ScreenName = screenName
+	} else {
+		return nil, errors.New("screen_name not found in setting file")
+	}
+
 	return config, nil
 }
