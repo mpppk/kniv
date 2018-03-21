@@ -37,18 +37,24 @@ func (c *Processor) Process(event kniv.Event) ([]kniv.Event, error) {
 	if !ok {
 		log.Fatal("offset key not found in payload")
 	}
-	offset, ok := offsetPayload.(int)
-	if !ok {
-		log.Fatalf("offset key does not have int: %T", offset)
+	var offset int
+	switch v := offsetPayload.(type) {
+	case int:
+		offset = v
+	case float64:
+		offset = int(v)
 	}
 
-	limitPaylod, ok := payload["limit"]
+	limitPayload, ok := payload["limit"]
 	if !ok {
 		log.Fatal("limit key not found in payload")
 	}
-	limit, ok := limitPaylod.(int)
-	if !ok {
-		log.Fatalf("offset key does not have int: %T", offset)
+	var limit int
+	switch v := limitPayload.(type) {
+	case int:
+		limit = v
+	case float64:
+		limit = int(v)
 	}
 
 	if limit > c.config.MaxOffset {
