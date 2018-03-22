@@ -31,6 +31,9 @@ var rootCmd = &cobra.Command{
 			log.Fatal("invalid twitter setting")
 		}
 
+		flow := kniv.LoadFlowFromFile("sample_flow.yml")
+		fmt.Printf("%#v\n", flow)
+
 		dispatcher := kniv.NewDispatcher(100000)
 
 		twitterProcessor, err := twitter.NewProcessorFromConfigMap(100000, setting)
