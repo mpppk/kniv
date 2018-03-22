@@ -41,7 +41,10 @@ var rootCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		delayProcessor := kniv.NewDelayProcessor(100000, 1000)
+		baseArgs := &kniv.BaseArgs{QueueSize: 100000}
+		delayArgs := &kniv.DelayProcessorArgs{BaseArgs: baseArgs, IntervalMilliSec: 5000, Group: "test"}
+
+		delayProcessor := kniv.NewDelayProcessor(delayArgs)
 
 		tasks := []kniv.FilterTask{
 			kniv.NewFilterByJSTask([]string{"p.downloaded"}),

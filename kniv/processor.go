@@ -11,6 +11,10 @@ type BaseProcessor struct {
 	Process func(resource Event) ([]Event, error)
 }
 
+type BaseArgs struct {
+	QueueSize int
+}
+
 func (b *BaseProcessor) GetName() string {
 	return b.Name
 }
