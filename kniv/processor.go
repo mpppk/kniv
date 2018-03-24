@@ -68,3 +68,8 @@ type Processor interface {
 	SetOutChannel(outChan chan Event)
 	Start()
 }
+
+type ProcessorGenerator interface {
+	GetName() string
+	Generate(intfArgs interface{}) (Processor, error)
+}

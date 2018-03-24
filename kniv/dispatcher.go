@@ -6,9 +6,19 @@ import (
 )
 
 type registeredProcessor struct {
+	Id            uint
+	Name          string
 	consumeLabels []Label
 	produceLabels []Label
 	processor     Processor
+}
+
+func (r *registeredProcessor) addConsumeLabels(consumeLabels []Label) {
+	r.consumeLabels = append(r.consumeLabels, consumeLabels...)
+}
+
+func (r *registeredProcessor) addProduceLabels(produceLabels []Label) {
+	r.produceLabels = append(r.produceLabels, produceLabels...)
 }
 
 type registeredProcessors []*registeredProcessor
@@ -46,11 +56,48 @@ func (rs registeredProcessors) start() {
 	}
 }
 
+func (rs registeredProcessors) get(name string) (*registeredProcessor, bool) {
+	for _, r := range rs {
+		if r.Name == name {
+			return r, true
+		}
+	}
+	return nil, false
+}
+
+func (rs registeredProcessors) getById(id uint) (*registeredProcessor, bool) {
+	for _, r := range rs {
+		if r.Id == id {
+			return r, true
+		}
+	}
+	return nil, false
+}
+
+func (rs registeredProcessors) addConsumeLabels(id uint, consumeLabels []Label) bool {
+	processor, ok := rs.getById(id)
+	if !ok {
+		return false
+	}
+	processor.addConsumeLabels(consumeLabels)
+	return true
+}
+
+func (rs registeredProcessors) addProduceLabels(id uint, produceLabels []Label) bool {
+	processor, ok := rs.getById(id)
+	if !ok {
+		return false
+	}
+	processor.addProduceLabels(produceLabels)
+	return true
+}
+
 type Dispatcher struct {
 	registeredProcessors registeredProcessors
 	queue                chan Event
 	produceLabelMap      map[uint64][]Label
 	eventId              uint64
+	processorId          uint
 }
 
 func NewDispatcher(queueSize int) *Dispatcher {
@@ -61,13 +108,17 @@ func NewDispatcher(queueSize int) *Dispatcher {
 	}
 }
 
-func (d *Dispatcher) RegisterProcessor(consumeLabels, produceLabels []Label, processor Processor) {
+func (d *Dispatcher) RegisterProcessor(name string, consumeLabels, produceLabels []Label, processor Processor) uint {
 	processor.SetOutChannel(d.queue)
+	d.processorId++
 	d.registeredProcessors = append(d.registeredProcessors, &registeredProcessor{
+		Id:            d.processorId,
+		Name:          name,
 		consumeLabels: consumeLabels,
 		produceLabels: produceLabels,
 		processor:     processor,
 	})
+	return d.processorId
 }
 
 func (d *Dispatcher) AddResource(event Event) {
@@ -118,4 +169,8 @@ func (d *Dispatcher) Start() {
 
 func (d *Dispatcher) StartProcessors() {
 	d.registeredProcessors.start()
+}
+
+func (d *Dispatcher) GetProcessor(name string) (*registeredProcessor, bool) {
+	return d.registeredProcessors.get(name)
 }

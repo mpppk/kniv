@@ -11,8 +11,9 @@ type Flow struct {
 }
 
 type ProcessorSetting struct {
-	Name string
-	Args interface{}
+	ProcessorName string `yaml:"processor"`
+	Name          string
+	Args          interface{}
 }
 
 type Pipeline struct {
@@ -22,8 +23,8 @@ type Pipeline struct {
 
 type Job struct {
 	Processor string
-	Consume   []string
-	Produce   []string
+	Consume   []Label
+	Produce   []Label
 	Args      interface{}
 }
 

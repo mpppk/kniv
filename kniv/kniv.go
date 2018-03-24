@@ -2,6 +2,7 @@ package kniv
 
 import (
 	"errors"
+	"log"
 	"sync"
 )
 
@@ -202,4 +203,46 @@ var CrawlerFactories []CrawlerFactory
 
 func RegisterCrawlerFactory(crawlerGenerator CrawlerFactory) {
 	CrawlerFactories = append(CrawlerFactories, crawlerGenerator)
+}
+
+func RegisterProcessorsFromFlow(dispatcher *Dispatcher, flow *Flow, generators []ProcessorGenerator) {
+	// FIXME return Job with processor struct and register outside
+
+	for _, processorSetting := range flow.Processors {
+		name := processorSetting.ProcessorName
+		if processorSetting.Name != "" {
+			name = processorSetting.Name
+		}
+
+		for _, processorGenerator := range generators {
+			if processorSetting.ProcessorName == processorGenerator.GetName() {
+				processor, err := processorGenerator.Generate(processorSetting.Args)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				dispatcher.RegisterProcessor(name, []Label{}, []Label{}, processor)
+			}
+		}
+	}
+
+	for _, pipeline := range flow.Pipelines {
+		for _, job := range pipeline.Jobs {
+			// processorsで登録されていないかチェック
+
+			for _, processorGenerator := range generators {
+				if job.Processor == processorGenerator.GetName() {
+					processor, err := processorGenerator.Generate(job.Args)
+					if err != nil {
+						log.Fatal(err)
+					}
+					dispatcher.RegisterProcessor(processor.GetName(), job.Consume, job.Produce, processor) // FIXME name
+					// FIXME すでにprocessors keyで設定済みのprocessorにconsume/produceを追加したい場合がある
+					// register時にIDを発行して、それを使って後から変更できる仕組みが必要
+					break
+				}
+			}
+			// FIXME processorが見つからなかったらエラー
+		}
+	}
 }
