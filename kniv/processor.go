@@ -1,11 +1,13 @@
 package kniv
 
 import (
+	"fmt"
 	"log"
 )
 
 type BaseProcessor struct {
 	Name    string
+	Type    string
 	inChan  chan Event
 	outChan chan Event
 	Process func(resource Event) ([]Event, error)
@@ -17,6 +19,14 @@ type BaseArgs struct {
 
 func (b *BaseProcessor) GetName() string {
 	return b.Name
+}
+
+func (b *BaseProcessor) SetName(name string) {
+	b.Name = name
+}
+
+func (b *BaseProcessor) GetType() string {
+	return b.Type
 }
 
 func (b *BaseProcessor) Enqueue(resource Event) {
@@ -63,13 +73,37 @@ func NewBaseProcessor(queueSize int) *BaseProcessor {
 }
 
 type Processor interface {
+	GetType() string
 	GetName() string
+	SetName(name string)
 	Enqueue(resource Event)
 	SetOutChannel(outChan chan Event)
 	Start()
 }
 
 type ProcessorGenerator interface {
-	GetName() string
+	GetType() string
 	Generate(intfArgs interface{}) (Processor, error)
+}
+
+type ProcessorFactory struct {
+	generators []ProcessorGenerator
+}
+
+func (pf *ProcessorFactory) AddGenerator(generator ProcessorGenerator) {
+	pf.generators = append(pf.generators, generator)
+}
+
+func (pf *ProcessorFactory) Create(setting FlowSetting) (Processor, error) {
+	for _, generator := range pf.generators {
+		if setting.GetProcessorType() == generator.GetType() {
+			processor, err := generator.Generate(setting.GetArgs())
+			if err != nil {
+				return nil, err
+			}
+			processor.SetName(setting.GetName())
+			return processor, nil
+		}
+	}
+	return nil, fmt.Errorf("processor type %s not found", setting.GetProcessorType())
 }

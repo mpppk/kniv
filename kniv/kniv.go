@@ -2,8 +2,7 @@ package kniv
 
 import (
 	"errors"
-	"log"
-	"sync"
+	"fmt"
 )
 
 type Label string
@@ -189,60 +188,64 @@ func (b *BaseEvent) Copy() Event {
 	return e
 }
 
-type Crawler interface {
-	SetResourceChannel(chan Event)
-	SetRootDownloadDir(dir string)
-	StartResourceSending(wg *sync.WaitGroup)
+type processors []Processor
+
+func (ps processors) get(name string) (Processor, bool) {
+	for _, processor := range ps {
+		if processor.GetName() == name {
+			return processor, true
+		}
+	}
+	return nil, false
 }
 
-type CrawlerFactory interface {
-	Create(crawlersSetting map[string]interface{}) (Crawler, error)
+func (ps processors) getOrCreate(pType string) (Processor, error) {
+	for _, processor := range ps {
+		if processor.GetType() == pType {
+			return processor, nil
+		}
+	}
+	return nil, fmt.Errorf("%s not found", pType)
 }
 
-var CrawlerFactories []CrawlerFactory
-
-func RegisterCrawlerFactory(crawlerGenerator CrawlerFactory) {
-	CrawlerFactories = append(CrawlerFactories, crawlerGenerator)
-}
-
-func RegisterProcessorsFromFlow(dispatcher *Dispatcher, flow *Flow, generators []ProcessorGenerator) {
+func RegisterProcessorsFromFlow(dispatcher *Dispatcher, flow *Flow, factory ProcessorFactory) error {
 	// FIXME return Job with processor struct and register outside
 
+	var ps processors
 	for _, processorSetting := range flow.Processors {
-		name := processorSetting.ProcessorName
+		pType := processorSetting.ProcessorType
 		if processorSetting.Name != "" {
-			name = processorSetting.Name
+			pType = processorSetting.Name
 		}
 
-		for _, processorGenerator := range generators {
-			if processorSetting.ProcessorName == processorGenerator.GetName() {
-				processor, err := processorGenerator.Generate(processorSetting.Args)
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				dispatcher.RegisterProcessor(name, []Label{}, []Label{}, processor)
-			}
+		if _, ok := ps.get(pType); ok {
+			continue
 		}
+
+		processor, err := factory.Create(processorSetting)
+		if err != nil {
+			return err
+		}
+		ps = append(ps, processor)
 	}
 
 	for _, pipeline := range flow.Pipelines {
 		for _, job := range pipeline.Jobs {
-			// processorsで登録されていないかチェック
+			name := job.GetProcessorType() // FIXME check job processorName if exist
 
-			for _, processorGenerator := range generators {
-				if job.Processor == processorGenerator.GetName() {
-					processor, err := processorGenerator.Generate(job.Args)
-					if err != nil {
-						log.Fatal(err)
-					}
-					dispatcher.RegisterProcessor(processor.GetName(), job.Consume, job.Produce, processor) // FIXME name
-					// FIXME すでにprocessors keyで設定済みのprocessorにconsume/produceを追加したい場合がある
-					// register時にIDを発行して、それを使って後から変更できる仕組みが必要
-					break
+			var newProcessor Processor
+			if p, ok := ps.get(name); ok {
+				newProcessor = p
+			} else {
+				processor, err := factory.Create(job)
+				if err != nil {
+					return err
 				}
+				newProcessor = processor
 			}
-			// FIXME processorが見つからなかったらエラー
+
+			dispatcher.RegisterTask(newProcessor.GetName(), job.Consume, job.Produce, newProcessor) // FIXME name
 		}
 	}
+	return nil
 }

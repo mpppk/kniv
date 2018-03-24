@@ -1,12 +1,11 @@
 package kniv
 
 import (
-	"errors"
 	"fmt"
 	"time"
 )
 
-const delayProcessorName = "delay"
+const delayProcessorType = "delay"
 
 type DelayProcessor struct {
 	*BaseProcessor
@@ -22,21 +21,14 @@ type DelayProcessorArgs struct {
 func NewDelayProcessor(args *DelayProcessorArgs) *DelayProcessor {
 	delayProcessor := &DelayProcessor{
 		BaseProcessor: &BaseProcessor{
-			Name:   delayProcessorName,
+			Type:   delayProcessorType,
+			Name:   delayProcessorType,
 			inChan: make(chan Event, args.QueueSize),
 		},
 		sleepMilliSec: args.IntervalMilliSec * time.Millisecond,
 	}
 	delayProcessor.BaseProcessor.Process = delayProcessor.wait
 	return delayProcessor
-}
-
-func NewDelayProcessorFromArgs(intfArgs interface{}) (*DelayProcessor, error) {
-	args, ok := intfArgs.(DelayProcessorArgs)
-	if !ok {
-		return nil, errors.New("invalid delay processor args")
-	}
-	return NewDelayProcessor(&args), nil
 }
 
 func (d *DelayProcessor) wait(event Event) ([]Event, error) {
@@ -46,14 +38,14 @@ func (d *DelayProcessor) wait(event Event) ([]Event, error) {
 
 type DelayProcessorGenerator struct{}
 
-func (g *DelayProcessorGenerator) GetName() string {
-	return delayProcessorName
-}
-
 func (g *DelayProcessorGenerator) Generate(intfArgs interface{}) (Processor, error) {
 	args, ok := intfArgs.(DelayProcessorArgs)
 	if !ok {
 		return nil, fmt.Errorf("invalid delay processor args: %#v", intfArgs)
 	}
 	return NewDelayProcessor(&args), nil
+}
+
+func (g *DelayProcessorGenerator) GetType() string {
+	return delayProcessorType
 }

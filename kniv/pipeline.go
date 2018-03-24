@@ -10,10 +10,28 @@ type Flow struct {
 	Processors []*ProcessorSetting
 }
 
+type FlowSetting interface {
+	GetProcessorType() string
+	GetName() string
+	GetArgs() interface{}
+}
+
 type ProcessorSetting struct {
-	ProcessorName string `yaml:"processor"`
+	ProcessorType string `yaml:"processor"`
 	Name          string
 	Args          interface{}
+}
+
+func (p *ProcessorSetting) GetProcessorType() string {
+	return p.ProcessorType
+}
+
+func (p *ProcessorSetting) GetName() string {
+	return p.Name
+}
+
+func (p *ProcessorSetting) GetArgs() interface{} {
+	return p.Args
 }
 
 type Pipeline struct {
@@ -22,10 +40,9 @@ type Pipeline struct {
 }
 
 type Job struct {
-	Processor string
-	Consume   []Label
-	Produce   []Label
-	Args      interface{}
+	ProcessorSetting `yaml:",inline"`
+	Consume          []Label
+	Produce          []Label
 }
 
 func LoadFlowFromFile(filepath string) *Flow {

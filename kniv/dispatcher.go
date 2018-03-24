@@ -93,11 +93,11 @@ func (rs tasks) addProduceLabels(id uint, produceLabels []Label) bool {
 }
 
 type Dispatcher struct {
-	registeredProcessors tasks
-	queue                chan Event
-	produceLabelMap      map[uint64][]Label
-	eventId              uint64
-	processorId          uint
+	tasks           tasks
+	queue           chan Event
+	produceLabelMap map[uint64][]Label
+	eventId         uint64
+	processorId     uint
 }
 
 func NewDispatcher(queueSize int) *Dispatcher {
@@ -108,10 +108,10 @@ func NewDispatcher(queueSize int) *Dispatcher {
 	}
 }
 
-func (d *Dispatcher) RegisterProcessor(name string, consumeLabels, produceLabels []Label, processor Processor) uint {
+func (d *Dispatcher) RegisterTask(name string, consumeLabels, produceLabels []Label, processor Processor) uint {
 	processor.SetOutChannel(d.queue)
 	d.processorId++
-	d.registeredProcessors = append(d.registeredProcessors, &task{
+	d.tasks = append(d.tasks, &task{
 		Id:            d.processorId,
 		Name:          name,
 		consumeLabels: consumeLabels,
@@ -138,7 +138,7 @@ func (d *Dispatcher) Start() {
 
 		consumedLabel := event.PopLabel()
 
-		filteredProcessors := d.registeredProcessors.filterByConsumeLabel(consumedLabel)
+		filteredProcessors := d.tasks.filterByConsumeLabel(consumedLabel)
 
 		if len(filteredProcessors) == 0 {
 			log.Println(consumedLabel + " not found")
@@ -168,9 +168,9 @@ func (d *Dispatcher) Start() {
 }
 
 func (d *Dispatcher) StartProcessors() {
-	d.registeredProcessors.start()
+	d.tasks.start()
 }
 
 func (d *Dispatcher) GetProcessor(name string) (*task, bool) {
-	return d.registeredProcessors.get(name)
+	return d.tasks.get(name)
 }

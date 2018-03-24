@@ -45,6 +45,9 @@ var rootCmd = &cobra.Command{
 		//	&kniv.DelayProcessorGenerator{},
 		//}
 
+		factory := kniv.ProcessorFactory{}
+		factory.AddGenerator(&kniv.DelayProcessorGenerator{})
+
 		baseArgs := &kniv.BaseArgs{QueueSize: 100000}
 		delayArgs := &kniv.DelayProcessorArgs{BaseArgs: baseArgs, IntervalMilliSec: 5000, Group: "test"}
 
@@ -57,10 +60,10 @@ var rootCmd = &cobra.Command{
 		}
 		customProcessor := kniv.NewCustomProcessor(100000, tasks)
 
-		dispatcher.RegisterProcessor(twitterProcessor.Name, []kniv.Label{"init", "twitter"}, []kniv.Label{"transform", "download", "delay"}, twitterProcessor) // FIXME
-		dispatcher.RegisterProcessor(delayProcessor.Name, []kniv.Label{"delay"}, []kniv.Label{}, delayProcessor)
-		dispatcher.RegisterProcessor("downloader", []kniv.Label{"download"}, []kniv.Label{}, kniv.NewDownloader(100000, "idp"))
-		dispatcher.RegisterProcessor(customProcessor.Name, []kniv.Label{"transform"}, []kniv.Label{"twitter"}, customProcessor)
+		dispatcher.RegisterTask(twitterProcessor.Name, []kniv.Label{"init", "twitter"}, []kniv.Label{"transform", "download", "delay"}, twitterProcessor) // FIXME
+		dispatcher.RegisterTask(delayProcessor.Name, []kniv.Label{"delay"}, []kniv.Label{}, delayProcessor)
+		dispatcher.RegisterTask("downloader", []kniv.Label{"download"}, []kniv.Label{}, kniv.NewDownloader(100000, "idp"))
+		dispatcher.RegisterTask(customProcessor.Name, []kniv.Label{"transform"}, []kniv.Label{"twitter"}, customProcessor)
 		go dispatcher.Start()
 		dispatcher.StartProcessors()
 		initEvent := &kniv.BaseEvent{} // FIXME
