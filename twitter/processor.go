@@ -82,7 +82,7 @@ func (c *Processor) Process(event kniv.Event) ([]kniv.Event, error) {
 			for _, media := range tweet.Entities.Media {
 				r := kniv.NewBaseEvent(10, 10) // FIXME
 				r.GetPayload()["url"] = media.Media_url
-				r.GetPayload()["group"] = path.Join("twitter", c.config.ScreenName) // FIXME
+				r.GetPayload()["group"] = path.Join(processorType, c.config.ScreenName)
 				r.GetPayload()["count"] = count
 				r.GetPayload()["user"] = c.config.ScreenName
 				events = append(events, r)

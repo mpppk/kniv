@@ -47,6 +47,7 @@ var rootCmd = &cobra.Command{
 
 		factory := kniv.ProcessorFactory{}
 		factory.AddGenerator(&kniv.DelayProcessorGenerator{})
+		factory.AddGenerator(&twitter.ProcessorGenerator{})
 
 		baseArgs := &kniv.BaseArgs{QueueSize: 100000}
 		delayArgs := &kniv.DelayProcessorArgs{BaseArgs: baseArgs, IntervalMilliSec: 5000, Group: "test"}
