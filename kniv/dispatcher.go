@@ -5,7 +5,7 @@ import (
 	"log"
 )
 
-type registeredProcessor struct {
+type task struct {
 	Id            uint
 	Name          string
 	consumeLabels []Label
@@ -13,26 +13,26 @@ type registeredProcessor struct {
 	processor     Processor
 }
 
-func (r *registeredProcessor) addConsumeLabels(consumeLabels []Label) {
+func (r *task) addConsumeLabels(consumeLabels []Label) {
 	r.consumeLabels = append(r.consumeLabels, consumeLabels...)
 }
 
-func (r *registeredProcessor) addProduceLabels(produceLabels []Label) {
+func (r *task) addProduceLabels(produceLabels []Label) {
 	r.produceLabels = append(r.produceLabels, produceLabels...)
 }
 
-type registeredProcessors []*registeredProcessor
+type tasks []*task
 
-func (rs registeredProcessors) add(consumeLabels, produceLabels []Label, processor Processor) {
-	rs = append(rs, &registeredProcessor{
+func (rs tasks) add(consumeLabels, produceLabels []Label, processor Processor) {
+	rs = append(rs, &task{
 		consumeLabels: consumeLabels,
 		produceLabels: produceLabels,
 		processor:     processor,
 	})
 }
 
-func (rs registeredProcessors) filterByConsumeLabel(label Label) registeredProcessors {
-	var ret registeredProcessors
+func (rs tasks) filterByConsumeLabel(label Label) tasks {
+	var ret tasks
 	for _, r := range rs {
 		for _, consumeLabel := range r.consumeLabels {
 			if consumeLabel == label {
@@ -43,20 +43,20 @@ func (rs registeredProcessors) filterByConsumeLabel(label Label) registeredProce
 	return ret
 }
 
-func (rs registeredProcessors) toProcessors() (processors []Processor) {
+func (rs tasks) toProcessors() (processors []Processor) {
 	for _, r := range rs {
 		processors = append(processors, r.processor)
 	}
 	return processors
 }
 
-func (rs registeredProcessors) start() {
+func (rs tasks) start() {
 	for _, p := range rs.toProcessors() {
 		go p.Start()
 	}
 }
 
-func (rs registeredProcessors) get(name string) (*registeredProcessor, bool) {
+func (rs tasks) get(name string) (*task, bool) {
 	for _, r := range rs {
 		if r.Name == name {
 			return r, true
@@ -65,7 +65,7 @@ func (rs registeredProcessors) get(name string) (*registeredProcessor, bool) {
 	return nil, false
 }
 
-func (rs registeredProcessors) getById(id uint) (*registeredProcessor, bool) {
+func (rs tasks) getById(id uint) (*task, bool) {
 	for _, r := range rs {
 		if r.Id == id {
 			return r, true
@@ -74,7 +74,7 @@ func (rs registeredProcessors) getById(id uint) (*registeredProcessor, bool) {
 	return nil, false
 }
 
-func (rs registeredProcessors) addConsumeLabels(id uint, consumeLabels []Label) bool {
+func (rs tasks) addConsumeLabels(id uint, consumeLabels []Label) bool {
 	processor, ok := rs.getById(id)
 	if !ok {
 		return false
@@ -83,7 +83,7 @@ func (rs registeredProcessors) addConsumeLabels(id uint, consumeLabels []Label) 
 	return true
 }
 
-func (rs registeredProcessors) addProduceLabels(id uint, produceLabels []Label) bool {
+func (rs tasks) addProduceLabels(id uint, produceLabels []Label) bool {
 	processor, ok := rs.getById(id)
 	if !ok {
 		return false
@@ -93,7 +93,7 @@ func (rs registeredProcessors) addProduceLabels(id uint, produceLabels []Label) 
 }
 
 type Dispatcher struct {
-	registeredProcessors registeredProcessors
+	registeredProcessors tasks
 	queue                chan Event
 	produceLabelMap      map[uint64][]Label
 	eventId              uint64
@@ -111,7 +111,7 @@ func NewDispatcher(queueSize int) *Dispatcher {
 func (d *Dispatcher) RegisterProcessor(name string, consumeLabels, produceLabels []Label, processor Processor) uint {
 	processor.SetOutChannel(d.queue)
 	d.processorId++
-	d.registeredProcessors = append(d.registeredProcessors, &registeredProcessor{
+	d.registeredProcessors = append(d.registeredProcessors, &task{
 		Id:            d.processorId,
 		Name:          name,
 		consumeLabels: consumeLabels,
@@ -171,6 +171,6 @@ func (d *Dispatcher) StartProcessors() {
 	d.registeredProcessors.start()
 }
 
-func (d *Dispatcher) GetProcessor(name string) (*registeredProcessor, bool) {
+func (d *Dispatcher) GetProcessor(name string) (*task, bool) {
 	return d.registeredProcessors.get(name)
 }
