@@ -10,39 +10,22 @@ processors:
   - name: download_filter
     processor: custom
     args:
-      tasks:
-        - name: filter_event_by_js
+      logics:
+        - type: filter_event_by_js
           commands: ['p.downloaded']
-        - name: distinct_event
-          keys: [offset]
-        - name: select_payload
-          keys: [offset, limit, user, group]
-        - name: transform_payload_by_js
-          commands: ['p.offset += p.limit']
+        - type: distinct
+          keys: [since_id]
+        - type: select_payload
+          keys: [since_id, count, user, group]
 pipelines:
-  - name: tumblr-media-download
-    jobs:
-      - processor: fetch_photo_urls_from_tumblr_api
-        consume: [init]
-        produce:
-          - fetch_photo_urls_from_tumblr_api
-          - download_and_request
-      - processor: fetch_video_urls_from_tumblr_api
-        consume: [init]
-        produce:
-          - fetch_video_urls_from_tumblr_api
-          - download_and_request
   - name: twitter-download
     jobs:
-      - processor: fetch_image_urls_from_twitter_api
+      - processor: twitter
         consume: [init]
-        produce:
-          - fetch_image_urls_from_twitter_api
-          - download_and_request
-  - name: download_and_request
+        produce: [twitter-download, download]
+  - name: download
     jobs:
       - processor: delay
       - processor: download_from_url
       - processor: download_filter
-      - processor: download_transformer
       - processor: delay

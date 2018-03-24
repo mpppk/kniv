@@ -9,24 +9,35 @@ import (
 	"github.com/robertkrimen/otto"
 )
 
+const customProcessorType = "custom"
+
+type logicType string
+
+// FIXME load by side effect
+const (
+	filterByJSType    logicType = "filter_event_by_js"
+	transformByJSType logicType = "transform_by_js"
+	distinctType      logicType = "distinct"
+	selectPayloadType logicType = "select_payload"
+)
+
 type CustomProcessor struct {
 	*BaseProcessor
-	tasks []FilterTask
+	logics []CustomLogic
 }
 
-type TaskType string
-type TaskMode string
+type LogicType string
 
-type FilterTask interface {
+type CustomLogic interface {
 	Run(payload EventPayload) (EventPayload, error)
 }
 
-type FilterByJSTask struct {
+type FilterByJSLogic struct {
 	commands []string
 	vm       *otto.Otto
 }
 
-func (t *FilterByJSTask) Run(payload EventPayload) (EventPayload, error) {
+func (t *FilterByJSLogic) Run(payload EventPayload) (EventPayload, error) {
 	ok, err := filterEventByJS(t.vm, payload, t.commands)
 	if err != nil {
 		return nil, err
@@ -54,19 +65,19 @@ func filterEventByJS(vm *otto.Otto, payload EventPayload, commands []string) (bo
 	return result.ToBoolean()
 }
 
-func NewFilterByJSTask(commands []string) *FilterByJSTask {
-	return &FilterByJSTask{
+func NewFilterByJSLogic(commands []string) *FilterByJSLogic {
+	return &FilterByJSLogic{
 		vm:       otto.New(),
 		commands: commands,
 	}
 }
 
-type TransformByJSTask struct {
+type TransformByJSLogic struct {
 	commands []string
 	vm       *otto.Otto
 }
 
-func (t *TransformByJSTask) Run(payload EventPayload) (EventPayload, error) {
+func (t *TransformByJSLogic) Run(payload EventPayload) (EventPayload, error) {
 	return transformPayloadByJS(t.vm, payload, t.commands)
 }
 
@@ -98,19 +109,19 @@ func transformPayloadByJS(vm *otto.Otto, payload EventPayload, commands []string
 	return retPayload, nil
 }
 
-func NewTransformByJSTask(commands []string) *TransformByJSTask {
-	return &TransformByJSTask{
+func NewTransformByJSLogic(commands []string) *TransformByJSLogic {
+	return &TransformByJSLogic{
 		vm:       otto.New(),
 		commands: commands,
 	}
 }
 
-type DistinctTask struct {
+type DistinctLogic struct {
 	distinctKeyMap map[string]bool
 	keys           []string
 }
 
-func (t *DistinctTask) Run(payload EventPayload) (EventPayload, error) {
+func (t *DistinctLogic) Run(payload EventPayload) (EventPayload, error) {
 	distinct, err := checkAndUpdateDuplicatedEvent(t.distinctKeyMap, payload, t.keys)
 	if err != nil {
 		return nil, err
@@ -121,18 +132,18 @@ func (t *DistinctTask) Run(payload EventPayload) (EventPayload, error) {
 	return payload, nil
 }
 
-func NewDistinctTask(keys []string) *DistinctTask {
-	return &DistinctTask{
+func NewDistinctLogic(keys []string) *DistinctLogic {
+	return &DistinctLogic{
 		distinctKeyMap: map[string]bool{},
 		keys:           keys,
 	}
 }
 
-type SelectPayloadTask struct {
+type SelectPayloadLogic struct {
 	keys []string
 }
 
-func (t *SelectPayloadTask) Run(payload EventPayload) (EventPayload, error) {
+func (t *SelectPayloadLogic) Run(payload EventPayload) (EventPayload, error) {
 	newPayload := EventPayload{}
 	for _, key := range t.keys {
 		newPayload[key] = payload[key]
@@ -140,19 +151,19 @@ func (t *SelectPayloadTask) Run(payload EventPayload) (EventPayload, error) {
 	return newPayload, nil
 }
 
-func NewSelectPayloadTask(keys []string) *SelectPayloadTask {
-	return &SelectPayloadTask{
+func NewSelectPayloadLogic(keys []string) *SelectPayloadLogic {
+	return &SelectPayloadLogic{
 		keys: keys,
 	}
 }
 
-func NewCustomProcessor(queueSize int, tasks []FilterTask) *CustomProcessor {
+func NewCustomProcessor(queueSize int, logics []CustomLogic) *CustomProcessor {
 	customProcessor := &CustomProcessor{
 		BaseProcessor: &BaseProcessor{
 			Name:   "custom",
 			inChan: make(chan Event, queueSize),
 		},
-		tasks: tasks,
+		logics: logics,
 	}
 	customProcessor.BaseProcessor.Process = customProcessor.Process
 	return customProcessor
@@ -162,16 +173,16 @@ func (p *CustomProcessor) Process(event Event) ([]Event, error) {
 	payload := event.GetPayload()
 
 	newPayload := payload
-	for _, task := range p.tasks {
-		log.Printf("%d: %T is started. payload: %#v", event.GetId(), task, newPayload)
-		p, err := task.Run(newPayload)
+	for _, logic := range p.logics {
+		log.Printf("%d: %T is started. payload: %#v", event.GetId(), logic, newPayload)
+		p, err := logic.Run(newPayload)
 
 		if err != nil {
 			return nil, err
 		}
 
 		if p == nil {
-			log.Printf("%d: event is filtered by %T", event.GetId(), task)
+			log.Printf("%d: event is filtered by %T", event.GetId(), logic)
 			return nil, nil
 		}
 		newPayload = p

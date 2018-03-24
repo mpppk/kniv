@@ -48,18 +48,19 @@ var rootCmd = &cobra.Command{
 		factory := kniv.ProcessorFactory{}
 		factory.AddGenerator(&kniv.DelayProcessorGenerator{})
 		factory.AddGenerator(&twitter.ProcessorGenerator{})
+		factory.AddGenerator(&kniv.CustomProcessorGenerator{})
 
 		baseArgs := &kniv.BaseArgs{QueueSize: 100000}
 		delayArgs := &kniv.DelayProcessorArgs{BaseArgs: baseArgs, IntervalMilliSec: 5000, Group: "test"}
 
 		delayProcessor := kniv.NewDelayProcessor(delayArgs)
 
-		tasks := []kniv.FilterTask{
-			kniv.NewFilterByJSTask([]string{"p.downloaded"}),
-			kniv.NewDistinctTask([]string{"since_id"}),
-			kniv.NewSelectPayloadTask([]string{"since_id", "count", "user", "group"}),
+		logics := []kniv.CustomLogic{
+			kniv.NewFilterByJSLogic([]string{"p.downloaded"}),
+			kniv.NewDistinctLogic([]string{"since_id"}),
+			kniv.NewSelectPayloadLogic([]string{"since_id", "count", "user", "group"}),
 		}
-		customProcessor := kniv.NewCustomProcessor(100000, tasks)
+		customProcessor := kniv.NewCustomProcessor(100000, logics)
 
 		dispatcher.RegisterTask(twitterProcessor.Name, []kniv.Label{"init", "twitter"}, []kniv.Label{"transform", "download", "delay"}, twitterProcessor) // FIXME
 		dispatcher.RegisterTask(delayProcessor.Name, []kniv.Label{"delay"}, []kniv.Label{}, delayProcessor)
