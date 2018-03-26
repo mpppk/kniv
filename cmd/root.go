@@ -10,6 +10,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/mpppk/kniv/twitter"
 	_ "github.com/mpppk/kniv/twitter"
 	"github.com/spf13/cobra"
@@ -24,6 +25,11 @@ var rootCmd = &cobra.Command{
 	Short: "real time event stream engine",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
+		err := godotenv.Load()
+		if err != nil {
+			log.Fatal("Error loading .env file")
+		}
+
 		flow := kniv.LoadFlowFromFile("sample_flow.yml")
 
 		dispatcher := kniv.NewDispatcher(100000)
@@ -39,7 +45,7 @@ var rootCmd = &cobra.Command{
 		factory.AddGenerator(&kniv.CustomProcessorGenerator{})
 		factory.AddGenerator(&kniv.DownloaderGenerator{})
 
-		err := kniv.RegisterProcessorsFromFlow(dispatcher, flow, factory)
+		err = kniv.RegisterProcessorsFromFlow(dispatcher, flow, factory)
 		if err != nil {
 			log.Println(err)
 		}

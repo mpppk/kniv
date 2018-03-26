@@ -3,10 +3,12 @@ processors:
     processor: twitter
     args:
       queueSize: 100000
-      consumerKey: hoge
-      consumerSecret: hoge
-      token: hoge
-      tokenSecret: hoge
+      consumerKey: $TWITTER_CONSUMER_KEY
+      consumerSecret: $TWITTER_CONSUMER_SECRET
+      accessToken: $TWITTER_ACCESS_TOKEN
+      accessTokenSecret: $TWITTER_ACCESS_TOKEN_SECRET
+      maxTweetNum: 200
+      screenName: artsjpn
 
   delay: &delay_processor
     processor: delay
