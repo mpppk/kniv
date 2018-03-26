@@ -101,7 +101,10 @@ func (pf *ProcessorFactory) Create(setting FlowSetting) (Processor, error) {
 			if err != nil {
 				return nil, err
 			}
-			processor.SetName(setting.GetName())
+			processor.SetName(setting.GetProcessorType())
+			if setting.GetName() != "" {
+				processor.SetName(setting.GetName())
+			}
 			return processor, nil
 		}
 	}
