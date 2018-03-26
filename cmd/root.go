@@ -6,7 +6,6 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/mpppk/kniv/kniv"
 	//_ "github.com/mpppk/kniv/tumblr"
-	"log"
 	"os"
 	"path"
 	"time"
@@ -15,6 +14,7 @@ import (
 	_ "github.com/mpppk/kniv/twitter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"log"
 )
 
 var cfgFile string
@@ -24,50 +24,45 @@ var rootCmd = &cobra.Command{
 	Short: "real time event stream engine",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		// FIXME don't load config via viper
-		crawlersSetting := viper.GetStringMap("processors")
-		setting, ok := crawlersSetting["twitter"].(map[string]interface{})
-		if !ok {
-			log.Fatal("invalid twitter setting")
-		}
-
 		flow := kniv.LoadFlowFromFile("sample_flow.yml")
-		fmt.Printf("%#v\n", flow)
 
 		dispatcher := kniv.NewDispatcher(100000)
 
-		twitterProcessor, err := twitter.NewProcessorFromConfigMap(100000, setting)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		//processorGenerators := []kniv.ProcessorGenerator{
-		//	&kniv.DelayProcessorGenerator{},
+		//twitterProcessor, err := twitter.NewProcessorFromConfigMap(100000, setting)
+		//if err != nil {
+		//	log.Fatal(err)
 		//}
 
 		factory := kniv.ProcessorFactory{}
 		factory.AddGenerator(&kniv.DelayProcessorGenerator{})
 		factory.AddGenerator(&twitter.ProcessorGenerator{})
 		factory.AddGenerator(&kniv.CustomProcessorGenerator{})
+		factory.AddGenerator(&kniv.DownloaderGenerator{})
 
-		baseArgs := &kniv.BaseArgs{QueueSize: 100000}
-		delayArgs := &kniv.DelayProcessorArgs{BaseArgs: baseArgs, IntervalMilliSec: 5000, Group: "test"}
-
-		delayProcessor := kniv.NewDelayProcessor(delayArgs)
-
-		logics := []kniv.CustomLogic{
-			kniv.NewFilterByJSLogic([]string{"p.downloaded"}),
-			kniv.NewDistinctLogic([]string{"since_id"}),
-			kniv.NewSelectPayloadLogic([]string{"since_id", "count", "user", "group"}),
+		err := kniv.RegisterProcessorsFromFlow(dispatcher, flow, factory)
+		if err != nil {
+			log.Println(err)
 		}
-		customProcessor := kniv.NewCustomProcessor(100000, logics)
 
-		dispatcher.RegisterTask(twitterProcessor.Name, []kniv.Label{"init", "twitter"}, []kniv.Label{"transform", "download", "delay"}, twitterProcessor) // FIXME
-		dispatcher.RegisterTask(delayProcessor.Name, []kniv.Label{"delay"}, []kniv.Label{}, delayProcessor)
-		dispatcher.RegisterTask("downloader", []kniv.Label{"download"}, []kniv.Label{}, kniv.NewDownloader(100000, "idp"))
-		dispatcher.RegisterTask(customProcessor.Name, []kniv.Label{"transform"}, []kniv.Label{"twitter"}, customProcessor)
-		go dispatcher.Start()
+		//baseArgs := kniv.BaseArgs{QueueSize: 100000}
+		//delayArgs := &kniv.DelayProcessorArgs{BaseArgs: baseArgs, IntervalMilliSec: 5000, Group: []string{"test"}}
+		//
+		//delayProcessor := kniv.NewDelayProcessor(delayArgs)
+		//
+		//logics := []kniv.CustomLogic{
+		//	kniv.NewFilterByJSLogic([]string{"p.downloaded"}),
+		//	kniv.NewDistinctLogic([]string{"since_id"}),
+		//	kniv.NewSelectPayloadLogic([]string{"since_id", "count", "user", "group"}),
+		//}
+		//customProcessor := kniv.NewCustomProcessor(100000, logics)
+		//
+		//dispatcher.RegisterTask(twitterProcessor.Name, []kniv.Label{"init", "twitter"}, []kniv.Label{"transform", "download", "delay"}, twitterProcessor) // FIXME
+		//dispatcher.RegisterTask(delayProcessor.Name, []kniv.Label{"delay"}, []kniv.Label{}, delayProcessor)
+		//dispatcher.RegisterTask("downloader", []kniv.Label{"download"}, []kniv.Label{}, kniv.NewDownloader(100000, "idp"))
+		//dispatcher.RegisterTask(customProcessor.Name, []kniv.Label{"transform"}, []kniv.Label{"twitter"}, customProcessor)
 		dispatcher.StartProcessors()
+		go dispatcher.Start()
+		time.Sleep(1000)
 		initEvent := &kniv.BaseEvent{} // FIXME
 		initEvent.SetSourceId(0)
 		initEvent.PushLabel("init")

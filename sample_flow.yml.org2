@@ -1,27 +1,14 @@
 processors:
-  twitter: &twitter_processor
-    processor: twitter
-    args:
-      queueSize: 100000
-      consumerKey: hoge
-      consumerSecret: hoge
-      token: hoge
-      tokenSecret: hoge
-
-  delay: &delay_processor
-    processor: delay
+  - processor: delay
     args:
       queueSize: 100000
       intervalMilliSec: 5000
       group: [group]
-
-  downloader: &downloader
-    processor: downloader
+  - processor: download_from_url
     args:
       root_dir: ~/kniv
       paths: [group, user]
-
-  custom: &custom_processor
+  - name: download_filter
     processor: custom
     args:
       logics:
@@ -31,17 +18,15 @@ processors:
           keys: [since_id]
         - type: select_payload
           keys: [since_id, count, user, group]
-
 pipelines:
   - name: twitter-download
     jobs:
-      - <<: *twitter_processor
+      - processor: twitter
         consume: [init]
-        produce: [twitter, download]
-  # pipeline name
+        produce: [twitter-download, download]
   - name: download
     jobs:
-      - *delay_processor
-      - *downloader
-      - *custom_processor
-      - *delay_processor
+      - processor: delay
+      - processor: download_from_url
+      - processor: download_filter
+      - processor: delay

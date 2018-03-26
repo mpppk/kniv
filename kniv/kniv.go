@@ -212,27 +212,9 @@ func RegisterProcessorsFromFlow(dispatcher *Dispatcher, flow *Flow, factory Proc
 	// FIXME return Job with processor struct and register outside
 
 	var ps processors
-	for _, processorSetting := range flow.Processors {
-		pType := processorSetting.ProcessorType
-		if processorSetting.Name != "" {
-			pType = processorSetting.Name
-		}
-
-		if _, ok := ps.get(pType); ok {
-			continue
-		}
-
-		processor, err := factory.Create(processorSetting)
-		if err != nil {
-			return err
-		}
-		ps = append(ps, processor)
-	}
-
 	for _, pipeline := range flow.Pipelines {
-		for _, job := range pipeline.Jobs {
+		for i, job := range pipeline.Jobs {
 			name := job.GetProcessorType() // FIXME check job processorName if exist
-
 			var newProcessor Processor
 			if p, ok := ps.get(name); ok {
 				newProcessor = p
@@ -244,7 +226,46 @@ func RegisterProcessorsFromFlow(dispatcher *Dispatcher, flow *Flow, factory Proc
 				newProcessor = processor
 			}
 
-			dispatcher.RegisterTask(newProcessor.GetName(), job.Consume, job.Produce, newProcessor) // FIXME name
+			var fullConsumeLabels []Label
+			var fullProduceLabels []Label
+
+			if len(job.Consume) == 0 {
+				label := Label(job.ProcessorType)
+				if job.Name != "" {
+					label = Label(job.Name)
+				}
+				fullConsumeLabel := Label(fmt.Sprintf("%s/%s", pipeline.Name, label))
+				fullConsumeLabels = append(fullConsumeLabels, fullConsumeLabel)
+				if i == 0 {
+					fullConsumeLabels = append(fullConsumeLabels, Label(pipeline.Name))
+				}
+			} else {
+				for _, c := range job.Consume {
+					if c == "init" { // FIXME
+						fullConsumeLabels = append(fullConsumeLabels, c)
+						continue
+					}
+					fullConsumeLabel := Label(fmt.Sprintf("%s/%s", pipeline.Name, c))
+					fullConsumeLabels = append(fullConsumeLabels, fullConsumeLabel)
+				}
+			}
+
+			if len(job.Produce) == 0 && i < (len(pipeline.Jobs)-1) {
+				nextJob := pipeline.Jobs[i+1]
+				label := Label(nextJob.ProcessorType)
+				if nextJob.Name != "" {
+					label = Label(nextJob.Name)
+				}
+				fullProduceLabel := Label(fmt.Sprintf("%s/%s", pipeline.Name, label))
+				fullProduceLabels = append(fullProduceLabels, fullProduceLabel)
+			} else {
+				for _, p := range job.Produce {
+					fullProduceLabel := Label(fmt.Sprintf("%s/%s", pipeline.Name, p))
+					fullProduceLabels = append(fullProduceLabels, fullProduceLabel)
+				}
+			}
+
+			dispatcher.RegisterTask(newProcessor.GetName(), fullConsumeLabels, fullProduceLabels, newProcessor) // FIXME name
 		}
 	}
 	return nil

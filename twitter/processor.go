@@ -35,6 +35,7 @@ func (c *Processor) Fetch(maxId int64, count int) ([]anaconda.Tweet, error) {
 }
 
 func (c *Processor) Process(event kniv.Event) ([]kniv.Event, error) {
+	fmt.Println("twitter process")
 	payload := event.GetPayload()
 	sinceIdPayload, ok := payload["since_id"]
 	if !ok {
@@ -114,7 +115,8 @@ func NewProcessor(queueSize int, config *Config) Processor {
 		client:        CreateClient(config),
 		config:        config,
 	}
-	processor.BaseProcessor.Name = "twitter"
+	processor.BaseProcessor.Name = processorType // FIXME
+	processor.BaseProcessor.Type = processorType
 	processor.BaseProcessor.Process = processor.Process
 	return processor
 }

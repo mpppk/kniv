@@ -1,7 +1,7 @@
 package kniv
 
 import (
-	"fmt"
+	"github.com/mitchellh/mapstructure"
 	"time"
 )
 
@@ -13,9 +13,9 @@ type DelayProcessor struct {
 }
 
 type DelayProcessorArgs struct {
-	*BaseArgs
+	BaseArgs         `mapstructure:",squash"`
 	IntervalMilliSec time.Duration
-	Group            string
+	Group            []string
 }
 
 func NewDelayProcessor(args *DelayProcessorArgs) *DelayProcessor {
@@ -39,9 +39,10 @@ func (d *DelayProcessor) wait(event Event) ([]Event, error) {
 type DelayProcessorGenerator struct{}
 
 func (g *DelayProcessorGenerator) Generate(intfArgs interface{}) (Processor, error) {
-	args, ok := intfArgs.(DelayProcessorArgs)
-	if !ok {
-		return nil, fmt.Errorf("invalid delay processor args: %#v", intfArgs)
+	var args DelayProcessorArgs
+	err := mapstructure.Decode(intfArgs, &args)
+	if err != nil {
+		return nil, err
 	}
 	return NewDelayProcessor(&args), nil
 }

@@ -6,8 +6,7 @@ import (
 )
 
 type Flow struct {
-	Pipelines  []*Pipeline
-	Processors []*ProcessorSetting
+	Pipelines []*Pipeline
 }
 
 type FlowSetting interface {
