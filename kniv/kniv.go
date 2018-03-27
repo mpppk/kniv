@@ -245,6 +245,12 @@ func RegisterProcessorsFromFlow(dispatcher *Dispatcher, flow *Flow, factory Proc
 						fullConsumeLabels = append(fullConsumeLabels, c)
 						continue
 					}
+
+					if _, ok := flow.getPipeline(string(c)); ok {
+						fullConsumeLabels = append(fullConsumeLabels, c)
+						continue
+					}
+
 					fullConsumeLabel := Label(fmt.Sprintf("%s/%s", pipeline.Name, c))
 					fullConsumeLabels = append(fullConsumeLabels, fullConsumeLabel)
 				}
@@ -260,6 +266,11 @@ func RegisterProcessorsFromFlow(dispatcher *Dispatcher, flow *Flow, factory Proc
 				fullProduceLabels = append(fullProduceLabels, fullProduceLabel)
 			} else {
 				for _, p := range job.Produce {
+					if _, ok := flow.getPipeline(string(p)); ok {
+						fullProduceLabels = append(fullProduceLabels, p)
+						continue
+					}
+
 					fullProduceLabel := Label(fmt.Sprintf("%s/%s", pipeline.Name, p))
 					fullProduceLabels = append(fullProduceLabels, fullProduceLabel)
 				}

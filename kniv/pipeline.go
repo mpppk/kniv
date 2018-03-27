@@ -9,6 +9,15 @@ type Flow struct {
 	Pipelines []*Pipeline
 }
 
+func (f *Flow) getPipeline(pipelineName string) (*Pipeline, bool) {
+	for _, pipeline := range f.Pipelines {
+		if pipeline.Name == pipelineName {
+			return pipeline, true
+		}
+	}
+	return nil, false
+}
+
 type FlowSetting interface {
 	GetProcessorType() string
 	GetName() string
@@ -36,6 +45,15 @@ func (p *ProcessorSetting) GetArgs() interface{} {
 type Pipeline struct {
 	Name string
 	Jobs []*Job
+}
+
+func (p *Pipeline) GetJob(jobName string) (*Job, bool) {
+	for _, job := range p.Jobs {
+		if job.Name == jobName {
+			return job, true
+		}
+	}
+	return nil, false
 }
 
 type Job struct {
