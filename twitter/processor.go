@@ -35,7 +35,6 @@ func (c *Processor) Fetch(maxId int64, count int) ([]anaconda.Tweet, error) {
 }
 
 func (c *Processor) Process(event kniv.Event) ([]kniv.Event, error) {
-	fmt.Println("twitter process")
 	payload := event.GetPayload()
 	sinceIdPayload, ok := payload["since_id"]
 	if !ok {
@@ -68,6 +67,7 @@ func (c *Processor) Process(event kniv.Event) ([]kniv.Event, error) {
 	tweetNum := 0
 	for {
 		if tweetNum >= c.config.MaxTweetNum {
+			log.Println("twitter processor retrun no events because exceed max tweet num")
 			return []kniv.Event{}, nil
 		}
 
@@ -98,7 +98,6 @@ func (c *Processor) Process(event kniv.Event) ([]kniv.Event, error) {
 			for _, e := range events {
 				e.GetPayload()["since_id"] = nextSinceId
 			}
-
 			return events, nil
 		}
 	}

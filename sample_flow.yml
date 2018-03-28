@@ -40,7 +40,6 @@ pipelines:
       - <<: *twitter_processor
         consume: [init]
         produce: [twitter, download]
-  # pipeline name
   - name: download
     jobs:
       - *delay_processor

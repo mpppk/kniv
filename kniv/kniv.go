@@ -3,6 +3,7 @@ package kniv
 import (
 	"errors"
 	"fmt"
+	"log"
 )
 
 type Label string
@@ -213,8 +214,11 @@ func RegisterProcessorsFromFlow(dispatcher *Dispatcher, flow *Flow, factory Proc
 
 	var ps processors
 	for _, pipeline := range flow.Pipelines {
+		log.Printf("Pipline [%s] loading... ", pipeline.Name)
 		for i, job := range pipeline.Jobs {
 			name := job.GetProcessorType() // FIXME check job processorName if exist
+			log.Printf("Job [%s] loading... ", name)
+
 			var newProcessor Processor
 			if p, ok := ps.get(name); ok {
 				newProcessor = p
@@ -277,6 +281,8 @@ func RegisterProcessorsFromFlow(dispatcher *Dispatcher, flow *Flow, factory Proc
 			}
 
 			dispatcher.RegisterTask(newProcessor.GetName(), fullConsumeLabels, fullProduceLabels, newProcessor) // FIXME name
+			log.Printf("new task is registered: %s, consumes: %s, produces: %s", newProcessor.GetName(), fullConsumeLabels, fullProduceLabels)
+
 		}
 	}
 	return nil

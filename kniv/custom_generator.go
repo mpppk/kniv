@@ -1,6 +1,9 @@
 package kniv
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/mitchellh/mapstructure"
+)
 
 type CustomLogicSetting struct {
 	Type     logicType
@@ -15,9 +18,10 @@ type CustomProcessorArgs struct {
 type CustomProcessorGenerator struct{}
 
 func (g *CustomProcessorGenerator) Generate(intfArgs interface{}) (Processor, error) {
-	args, ok := intfArgs.(CustomProcessorArgs)
-	if !ok {
-		return nil, fmt.Errorf("invalid delay processor config: %#v", intfArgs)
+	var args CustomProcessorArgs
+	err := mapstructure.Decode(intfArgs, &args)
+	if err != nil {
+		return nil, err
 	}
 
 	logics, err := argsToLogics(args.Logics)
