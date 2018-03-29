@@ -69,9 +69,9 @@ var rootCmd = &cobra.Command{
 		dispatcher.StartProcessors()
 		go dispatcher.Start()
 		time.Sleep(1000)
-		initEvent := &kniv.BaseEvent{} // FIXME
+		initEvent := kniv.NewBaseEvent(3, 5) // FIXME
 		initEvent.SetSourceId(0)
-		initEvent.PushLabel("init")
+		initEvent.GetLabels().Push("init")
 		initEvent.SetPayload(map[string]interface{}{
 			"count": 100,
 		})

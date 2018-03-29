@@ -55,7 +55,7 @@ func (b *BaseProcessor) Start() {
 		for _, e := range processedEvents {
 			if e != nil {
 				e.SetSourceId(sourceEventId)
-				e.SetLabels(event.CopyLabels())
+				e.SetLabels(event.GetLabels().Copy())
 				e.SetRoutes(event.CopyRoutes())
 				b.outChan <- e
 			} else {

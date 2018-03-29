@@ -8,8 +8,8 @@ import (
 type task struct {
 	Id            uint
 	Name          string
-	consumeLabels []Label
-	produceLabels []Label
+	consumeLabels Labels
+	produceLabels Labels
 	processor     Processor
 }
 
@@ -127,7 +127,7 @@ func (d *Dispatcher) AddResource(event Event) {
 
 func (d *Dispatcher) Start() {
 	for event := range d.queue {
-		if len(event.GetLabels()) == 0 || event.GetLatestLabel() == "done" {
+		if len(*event.GetLabels()) == 0 || event.GetLabels().GetLatest() == "done" {
 			log.Printf("source %d: event done: %#v", event.GetSourceId(), event)
 			continue
 		}
@@ -136,12 +136,13 @@ func (d *Dispatcher) Start() {
 		event.SetId(d.eventId)
 		log.Printf("%d -> %d: new event: %#v\n", event.GetSourceId(), event.GetId(), event)
 
-		consumedLabel := event.PopLabel()
+		consumedLabel := event.GetLabels().Pop()
 
 		filteredProcessors := d.tasks.filterByConsumeLabel(consumedLabel)
 
 		if len(filteredProcessors) == 0 {
 			log.Println(consumedLabel + " not found")
+			log.Println(consumedLabel)
 			continue
 		}
 
@@ -154,12 +155,12 @@ func (d *Dispatcher) Start() {
 			newEvent.SetSourceId(event.GetId())
 			//}
 			log.Printf("%d -> %d: fork %#v\n", event.GetId(), newEvent.GetId(), newEvent)
-			msg := fmt.Sprintf("%d -> %d: sent to %s: %s -> %s", event.GetId(), newEvent.GetId(), filteredProcessor.processor.GetName(), newEvent.GetLabels(), consumedLabel)
+			msg := fmt.Sprintf("%d -> %d: sent to %s: %s -> %s", event.GetId(), newEvent.GetId(), filteredProcessor.processor.GetName(), *newEvent.GetLabels(), consumedLabel)
 
 			produceLabels := filteredProcessor.produceLabels
 			if len(produceLabels) > 0 {
 				msg += fmt.Sprintf(" <- %s", produceLabels)
-				newEvent.PushLabels(produceLabels)
+				newEvent.GetLabels().PushAll(&produceLabels)
 			}
 			log.Println(msg)
 			filteredProcessor.processor.Enqueue(newEvent)
